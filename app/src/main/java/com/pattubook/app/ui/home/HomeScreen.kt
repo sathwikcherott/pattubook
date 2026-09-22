@@ -54,6 +54,7 @@ fun HomeScreen(
     onGiveMoneyConfirm: (personId: Long, amountPaise: Long, note: String?) -> Unit,
     onRecordReturnConfirm: (personId: Long, amountPaise: Long, note: String?) -> Unit,
     modifier: Modifier = Modifier,
+    onBottomNavSelected: (NavDestination) -> Unit = {},
 ) {
     var selectedNavDestination by remember { mutableStateOf(NavDestination.HOME) }
     var showAddPersonDialog by remember { mutableStateOf(false) }
@@ -93,7 +94,14 @@ fun HomeScreen(
             PattubookBottomBar(
                 currentDestination = selectedNavDestination,
                 onDestinationSelected = { destination ->
-                    selectedNavDestination = destination
+                    when (destination) {
+                        NavDestination.HOME -> {
+                            selectedNavDestination = NavDestination.HOME
+                        }
+                        NavDestination.MORE -> {
+                            onBottomNavSelected(NavDestination.MORE)
+                        }
+                    }
                 }
             )
         }

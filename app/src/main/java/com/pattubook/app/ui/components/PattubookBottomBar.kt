@@ -1,5 +1,10 @@
 package com.pattubook.app.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,10 +15,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -36,9 +40,7 @@ enum class NavDestination(
     val icon: ImageVector,
 ) {
     HOME("Home", Icons.Default.Home),
-    GIVEN("Given", Icons.Default.Add),
-    RETURNED("Returned", Icons.Default.Refresh),
-    MORE("More", Icons.Default.MoreVert)
+    MORE("More", Icons.Default.MoreVert),
 }
 
 @Composable
@@ -70,9 +72,9 @@ fun PattubookBottomBar(
                 Box(
                     modifier = Modifier
                         .clip(pillShape)
-                        .background(if (isSelected) AccentGreenContainer else androidx.compose.ui.graphics.Color.Transparent)
+                        .background(if (isSelected) AccentGreenContainer else Color.Transparent)
                         .clickable { onDestinationSelected(destination) }
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
@@ -84,7 +86,11 @@ fun PattubookBottomBar(
                             contentDescription = destination.title,
                             tint = if (isSelected) AccentGreen else TextMuted,
                         )
-                        if (isSelected) {
+                        AnimatedVisibility(
+                            visible = isSelected,
+                            enter = fadeIn() + slideInHorizontally(),
+                            exit = fadeOut() + slideOutHorizontally()
+                        ) {
                             Text(
                                 text = destination.title,
                                 style = MaterialTheme.typography.labelMedium,

@@ -1,5 +1,9 @@
 package com.pattubook.app.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -10,6 +14,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,9 +25,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.pattubook.app.ui.theme.AccentBlue
 import com.pattubook.app.ui.theme.AccentGreen
+import com.pattubook.app.ui.theme.AccentGreenContainer
 import com.pattubook.app.ui.theme.BorderSubtle
 import com.pattubook.app.ui.theme.DarkSurface
 import com.pattubook.app.ui.theme.DarkSurfaceVariant
@@ -37,7 +48,7 @@ fun PattubookBalanceCard(
     totalGivenPaise: Long = 0L,
     totalReturnedPaise: Long = 0L,
 ) {
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(28.dp)
 
     Box(
         modifier = modifier
@@ -55,7 +66,7 @@ fun PattubookBalanceCard(
                 width = 1.dp,
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        AccentGreen.copy(alpha = 0.25f),
+                        AccentGreen.copy(alpha = 0.35f),
                         BorderSubtle,
                     )
                 ),
@@ -64,51 +75,79 @@ fun PattubookBalanceCard(
             .padding(24.dp)
     ) {
         Column {
-            Text(
-                text = "Total outstanding",
-                style = MaterialTheme.typography.titleSmall,
-                color = TextSecondary,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "TOTAL OUTSTANDING",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondary,
+                    letterSpacing = 1.2.sp
+                )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = CurrencyFormatter.formatPaiseToRupees(outstandingBalancePaise),
-                style = MaterialTheme.typography.displayLarge,
-                color = TextPrimary,
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            val peopleLabel = when (peopleCount) {
-                0 -> "No active borrowing ledger"
-                1 -> "1 person owes you"
-                else -> "$peopleCount people owe you"
-            }
-
-            Text(
-                text = peopleLabel,
-                style = MaterialTheme.typography.bodyMedium,
-                color = AccentGreen,
-            )
-
-            if (totalGivenPaise > 0 || totalReturnedPaise > 0) {
-                Spacer(modifier = Modifier.height(20.dp))
+                val peopleLabel = when (peopleCount) {
+                    0 -> "No active ledger"
+                    1 -> "1 contact"
+                    else -> "$peopleCount contacts"
+                }
 
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(BorderSubtle)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(AccentGreenContainer)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
+                    Text(
+                        text = peopleLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = AccentGreen,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            AnimatedContent(
+                targetState = outstandingBalancePaise,
+                transitionSpec = { fadeIn() togetherWith fadeOut() },
+                label = "balance_anim"
+            ) { balance ->
+                Text(
+                    text = CurrencyFormatter.formatPaiseToRupees(balance),
+                    style = MaterialTheme.typography.displayLarge,
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(BorderSubtle)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Given metric
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(AccentGreen)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Column {
                         Text(
                             text = "Given",
@@ -119,9 +158,20 @@ fun PattubookBalanceCard(
                             text = CurrencyFormatter.formatPaiseToRupees(totalGivenPaise),
                             style = MaterialTheme.typography.titleMedium,
                             color = TextPrimary,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
+                }
 
+                // Returned metric
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(AccentBlue)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
                             text = "Returned",
@@ -132,6 +182,7 @@ fun PattubookBalanceCard(
                             text = CurrencyFormatter.formatPaiseToRupees(totalReturnedPaise),
                             style = MaterialTheme.typography.titleMedium,
                             color = TextPrimary,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
                 }

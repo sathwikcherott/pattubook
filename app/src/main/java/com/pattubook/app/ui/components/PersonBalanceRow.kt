@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,14 +26,15 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pattubook.app.data.local.entity.Person
 import com.pattubook.app.ui.theme.AccentBlue
+import com.pattubook.app.ui.theme.AccentBlueContainer
 import com.pattubook.app.ui.theme.AccentGreen
 import com.pattubook.app.ui.theme.AccentGreenContainer
 import com.pattubook.app.ui.theme.BorderSubtle
 import com.pattubook.app.ui.theme.DarkSurface
+import com.pattubook.app.ui.theme.DarkSurfaceVariant
 import com.pattubook.app.ui.theme.PattubookTheme
 import com.pattubook.app.ui.theme.TextMuted
 import com.pattubook.app.ui.theme.TextPrimary
-import com.pattubook.app.ui.theme.TextSecondary
 import com.pattubook.app.ui.util.CurrencyFormatter
 
 @Composable
@@ -42,8 +44,14 @@ fun PersonBalanceRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val cardShape = RoundedCornerShape(16.dp)
+    val cardShape = RoundedCornerShape(18.dp)
     val initialLetter = person.name.trim().take(1).uppercase()
+
+    val (statusLabel, statusColor, statusContainer) = when {
+        outstandingBalancePaise > 0 -> Triple("Owes you", AccentGreen, AccentGreenContainer)
+        outstandingBalancePaise < 0 -> Triple("You owe", AccentBlue, AccentBlueContainer)
+        else -> Triple("Settled", TextMuted, DarkSurfaceVariant)
+    }
 
     Box(
         modifier = modifier
@@ -66,15 +74,16 @@ fun PersonBalanceRow(
                 // Initial Avatar Circle
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(46.dp)
                         .clip(CircleShape)
-                        .background(AccentGreenContainer),
+                        .background(statusContainer)
+                        .border(1.dp, statusColor.copy(alpha = 0.3f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = initialLetter,
                         style = MaterialTheme.typography.titleMedium,
-                        color = AccentGreen,
+                        color = statusColor,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -86,19 +95,24 @@ fun PersonBalanceRow(
                         text = person.name,
                         style = MaterialTheme.typography.titleMedium,
                         color = TextPrimary,
+                        fontWeight = FontWeight.SemiBold
                     )
 
-                    val statusLabel = when {
-                        outstandingBalancePaise > 0 -> "Owes you"
-                        outstandingBalancePaise < 0 -> "You owe"
-                        else -> "All settled"
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(statusContainer)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = statusLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = statusColor,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
-
-                    Text(
-                        text = statusLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary,
-                    )
                 }
             }
 
@@ -118,7 +132,7 @@ fun PersonBalanceRow(
                 text = balanceText,
                 style = MaterialTheme.typography.titleMedium,
                 color = balanceColor,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.Bold
             )
         }
     }

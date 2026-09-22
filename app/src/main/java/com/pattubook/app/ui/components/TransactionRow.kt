@@ -35,6 +35,7 @@ import com.pattubook.app.ui.theme.AccentGreen
 import com.pattubook.app.ui.theme.AccentGreenContainer
 import com.pattubook.app.ui.theme.BorderSubtle
 import com.pattubook.app.ui.theme.DarkSurface
+import com.pattubook.app.ui.theme.DarkSurfaceVariant
 import com.pattubook.app.ui.theme.PattubookTheme
 import com.pattubook.app.ui.theme.TextPrimary
 import com.pattubook.app.ui.theme.TextSecondary
@@ -46,7 +47,7 @@ fun TransactionRow(
     entry: LedgerEntry,
     modifier: Modifier = Modifier,
 ) {
-    val cardShape = RoundedCornerShape(16.dp)
+    val cardShape = RoundedCornerShape(18.dp)
     val isGiven = entry.type == LedgerEntryType.GIVEN
     val accentColor = if (isGiven) AccentGreen else AccentBlue
     val containerColor = if (isGiven) AccentGreenContainer else AccentBlueContainer
@@ -73,9 +74,10 @@ fun TransactionRow(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
+                            .size(42.dp)
                             .clip(CircleShape)
-                            .background(containerColor),
+                            .background(containerColor)
+                            .border(1.dp, accentColor.copy(alpha = 0.3f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -92,7 +94,8 @@ fun TransactionRow(
                         Text(
                             text = typeTitle,
                             style = MaterialTheme.typography.titleMedium,
-                            color = TextPrimary
+                            color = TextPrimary,
+                            fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = DateFormatter.formatEpochMillis(entry.timestamp),
@@ -106,18 +109,25 @@ fun TransactionRow(
                     text = CurrencyFormatter.formatPaiseToRupees(entry.amountPaise),
                     style = MaterialTheme.typography.titleMedium,
                     color = accentColor,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.Bold
                 )
             }
 
             entry.note?.takeIf { it.isNotBlank() }?.let { note ->
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(
-                    text = note,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(start = 50.dp)
-                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(DarkSurfaceVariant)
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = note,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+                }
             }
         }
     }
