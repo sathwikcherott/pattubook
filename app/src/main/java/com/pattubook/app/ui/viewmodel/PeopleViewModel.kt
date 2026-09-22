@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -27,28 +27,39 @@ class PeopleViewModel(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    val uiState: StateFlow<PeopleUiState> = repository.observeAllPeople()
-        .map { people ->
-            PeopleUiState(
-                people = people,
-                isLoading = false,
-                errorMessage = null,
-            )
-        }
-        .catch { throwable ->
-            emit(
-                PeopleUiState(
-                    people = emptyList(),
-                    isLoading = false,
-                    errorMessage = throwable.localizedMessage ?: "Failed to load people list.",
-                ),
-            )
-        }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = PeopleUiState(isLoading = true),
+    val uiState: StateFlow<PeopleUiState> = combine(
+        repository.observeAllPeople(),
+        repository.observeAllPersonBalances(),
+        repository.observeGlobalTotalGiven(),
+        repository.observeGlobalTotalGivenBack(),
+        repository.observeGlobalTotalOutstanding(),
+    ) { people, balancesMap, totalGiven, totalGivenBack, totalOutstanding ->
+        PeopleUiState(
+            people = people,
+            outstandingBalancePaiseByPerson = balancesMap,
+            totalGivenPaise = totalGiven,
+            totalGivenBackPaise = totalGivenBack,
+            totalOutstandingPaise = totalOutstanding,
+            isLoading = false,
+            errorMessage = null,
         )
+    }.catch { throwable ->
+        emit(
+            PeopleUiState(
+                people = emptyList(),
+                outstandingBalancePaiseByPerson = emptyMap(),
+                totalGivenPaise = 0L,
+                totalGivenBackPaise = 0L,
+                totalOutstandingPaise = 0L,
+                isLoading = false,
+                errorMessage = throwable.localizedMessage ?: "Failed to load overview.",
+            ),
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = PeopleUiState(isLoading = true),
+    )
 
     fun addPerson(name: String) {
         viewModelScope.launch {

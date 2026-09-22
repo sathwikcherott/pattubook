@@ -9,6 +9,7 @@ import com.pattubook.app.data.local.entity.LedgerEntryType
 import com.pattubook.app.data.local.entity.Person
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 
 /**
  * Main repository handling data operations and business rules for Pattubook.
@@ -144,6 +145,27 @@ class PattubookRepository(
     }
 
     // --- Balance Calculation Operations ---
+
+    fun observeAllPersonBalances(): Flow<Map<Long, Long>> {
+        return ledgerEntryDao.observeAllPersonBalances().map { list ->
+            list.associate { it.personId to it.outstandingBalancePaise }
+        }
+    }
+
+    fun observeGlobalTotalGiven(): Flow<Long> =
+        ledgerEntryDao.observeGlobalTotalGiven()
+
+    fun observeGlobalTotalGivenBack(): Flow<Long> =
+        ledgerEntryDao.observeGlobalTotalGivenBack()
+
+    fun observeGlobalTotalOutstanding(): Flow<Long> {
+        return combine(
+            observeGlobalTotalGiven(),
+            observeGlobalTotalGivenBack()
+        ) { totalGiven, totalGivenBack ->
+            totalGiven - totalGivenBack
+        }
+    }
 
     fun observeTotalGiven(personId: Long): Flow<Long> =
         ledgerEntryDao.observeTotalGiven(personId)

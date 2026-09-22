@@ -4,44 +4,41 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.pattubook.app.data.local.PattubookDatabase
+import com.pattubook.app.data.repository.PattubookRepository
+import com.pattubook.app.ui.home.HomeScreen
 import com.pattubook.app.ui.theme.PattubookTheme
+import com.pattubook.app.ui.viewmodel.PeopleViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val database = PattubookDatabase.getDatabase(applicationContext)
+        val repository = PattubookRepository(
+            personDao = database.personDao(),
+            ledgerEntryDao = database.ledgerEntryDao(),
+            database = database
+        )
+        val viewModelFactory = PeopleViewModel.Factory(repository)
+
         setContent {
             PattubookTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                val peopleViewModel: PeopleViewModel = viewModel(factory = viewModelFactory)
+                val uiState by peopleViewModel.uiState.collectAsState()
+
+                HomeScreen(
+                    uiState = uiState,
+                    onPersonClick = { /* Will navigate to PersonDetail in future step */ },
+                    onAddPersonClick = { /* Will navigate to AddPerson in future step */ },
+                    onGiveMoneyClick = { /* Will navigate to GiveMoney in future step */ },
+                    onRecordReturnClick = { /* Will navigate to RecordReturn in future step */ }
+                )
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    PattubookTheme {
-        Greeting("Android")
     }
 }

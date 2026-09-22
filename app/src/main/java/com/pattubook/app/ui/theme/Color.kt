@@ -2,10 +2,26 @@ package com.pattubook.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// Pattubook Color System - Dark Fintech Theme
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val DarkBackground = Color(0xFF0B0D10)
+val DarkSurface = Color(0xFF14171D)
+val DarkSurfaceVariant = Color(0xFF1E232D)
+val DarkSurfaceElevated = Color(0xFF262C38)
+
+val AccentGreen = Color(0xFF20DC8E)
+val AccentGreenDark = Color(0xFF10A367)
+val AccentGreenContainer = Color(0xFF0D3323)
+
+val AccentBlue = Color(0xFF38BDF8)
+val AccentBlueContainer = Color(0xFF0F2D3F)
+
+val TextPrimary = Color(0xFFF0F3F7)
+val TextSecondary = Color(0xFF8A93A0)
+val TextMuted = Color(0xFF5C6470)
+
+val BorderSubtle = Color(0xFF242A36)
+val BorderHighlight = Color(0xFF323B4B)
+
+val AccentRed = Color(0xFFFF5252)
+val AccentRedContainer = Color(0xFF3B1717)

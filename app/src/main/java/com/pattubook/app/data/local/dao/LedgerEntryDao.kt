@@ -55,4 +55,19 @@ interface LedgerEntryDao {
 
     @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM ledger_entry WHERE personId = :personId AND type = 'GIVEN_BACK'")
     suspend fun getTotalGivenBack(personId: Long): Long
+
+    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM ledger_entry WHERE type = 'GIVEN'")
+    fun observeGlobalTotalGiven(): Flow<Long>
+
+    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM ledger_entry WHERE type = 'GIVEN_BACK'")
+    fun observeGlobalTotalGivenBack(): Flow<Long>
+
+    @Query("""
+        SELECT 
+            personId,
+            COALESCE(SUM(CASE WHEN type = 'GIVEN' THEN amountPaise ELSE -amountPaise END), 0) AS outstandingBalancePaise
+        FROM ledger_entry
+        GROUP BY personId
+    """)
+    fun observeAllPersonBalances(): Flow<List<PersonBalance>>
 }
