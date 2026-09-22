@@ -36,9 +36,9 @@ fun DeleteAllDataDialog(
         Column(
             modifier = modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(20.dp))
                 .background(DarkSurface)
-                .padding(24.dp)
+                .padding(20.dp)
         ) {
             Text(
                 text = "Delete All Data?",
