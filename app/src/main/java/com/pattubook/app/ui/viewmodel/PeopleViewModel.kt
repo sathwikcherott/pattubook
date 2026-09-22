@@ -74,6 +74,48 @@ class PeopleViewModel(
         }
     }
 
+    fun addMoneyGiven(
+        personId: Long,
+        amountPaise: Long,
+        note: String? = null,
+    ) {
+        viewModelScope.launch {
+            val result = repository.addMoneyGiven(
+                personId = personId,
+                amountPaise = amountPaise,
+                note = note,
+            )
+            result.onSuccess { entryId ->
+                _eventChannel.send(PeopleUiEvent.MoneyAdded(entryId))
+            }.onFailure { throwable ->
+                val userMsg = throwable.message ?: "Failed to add money given."
+                _errorMessage.value = userMsg
+                _eventChannel.send(PeopleUiEvent.Error(userMsg))
+            }
+        }
+    }
+
+    fun addMoneyGivenBack(
+        personId: Long,
+        amountPaise: Long,
+        note: String? = null,
+    ) {
+        viewModelScope.launch {
+            val result = repository.addMoneyGivenBack(
+                personId = personId,
+                amountPaise = amountPaise,
+                note = note,
+            )
+            result.onSuccess { entryId ->
+                _eventChannel.send(PeopleUiEvent.MoneyAdded(entryId))
+            }.onFailure { throwable ->
+                val userMsg = throwable.message ?: "Failed to record money given back."
+                _errorMessage.value = userMsg
+                _eventChannel.send(PeopleUiEvent.Error(userMsg))
+            }
+        }
+    }
+
     fun updatePerson(person: Person) {
         viewModelScope.launch {
             val result = repository.updatePerson(person)

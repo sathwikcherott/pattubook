@@ -29,7 +29,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.pattubook.app.data.local.entity.LedgerEntryType
 import com.pattubook.app.data.local.entity.Person
+import com.pattubook.app.ui.components.AddPersonDialog
+import com.pattubook.app.ui.components.AddTransactionDialog
 import com.pattubook.app.ui.components.EmptyState
 import com.pattubook.app.ui.components.NavDestination
 import com.pattubook.app.ui.components.PattubookBalanceCard
@@ -47,12 +50,41 @@ import com.pattubook.app.ui.viewmodel.PeopleUiState
 fun HomeScreen(
     uiState: PeopleUiState,
     onPersonClick: (Long) -> Unit,
-    onAddPersonClick: () -> Unit,
-    onGiveMoneyClick: () -> Unit,
-    onRecordReturnClick: () -> Unit,
+    onAddPersonConfirm: (String) -> Unit,
+    onGiveMoneyConfirm: (personId: Long, amountPaise: Long, note: String?) -> Unit,
+    onRecordReturnConfirm: (personId: Long, amountPaise: Long, note: String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var selectedNavDestination by remember { mutableStateOf(NavDestination.HOME) }
+    var showAddPersonDialog by remember { mutableStateOf(false) }
+    var activeTransactionType by remember { mutableStateOf<LedgerEntryType?>(null) }
+
+    if (showAddPersonDialog) {
+        AddPersonDialog(
+            onDismiss = { showAddPersonDialog = false },
+            onConfirm = { name ->
+                showAddPersonDialog = false
+                onAddPersonConfirm(name)
+            }
+        )
+    }
+
+    activeTransactionType?.let { type ->
+        AddTransactionDialog(
+            type = type,
+            people = uiState.people,
+            personBalancesMap = uiState.outstandingBalancePaiseByPerson,
+            onDismiss = { activeTransactionType = null },
+            onConfirm = { personId, amountPaise, note ->
+                activeTransactionType = null
+                if (type == LedgerEntryType.GIVEN) {
+                    onGiveMoneyConfirm(personId, amountPaise, note)
+                } else {
+                    onRecordReturnConfirm(personId, amountPaise, note)
+                }
+            }
+        )
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -94,7 +126,7 @@ fun HomeScreen(
 
                 Box(
                     modifier = Modifier
-                        .clickable { onAddPersonClick() }
+                        .clickable { showAddPersonDialog = true }
                         .padding(8.dp)
                 ) {
                     Icon(
@@ -119,8 +151,8 @@ fun HomeScreen(
 
             // Quick Actions
             PattubookQuickActions(
-                onGiveMoneyClick = onGiveMoneyClick,
-                onRecordReturnClick = onRecordReturnClick,
+                onGiveMoneyClick = { activeTransactionType = LedgerEntryType.GIVEN },
+                onRecordReturnClick = { activeTransactionType = LedgerEntryType.GIVEN_BACK },
             )
 
             Spacer(modifier = Modifier.height(28.dp))
@@ -163,7 +195,7 @@ fun HomeScreen(
 
                 uiState.people.isEmpty() -> {
                     EmptyState(
-                        onAddPersonClick = onAddPersonClick,
+                        onAddPersonClick = { showAddPersonDialog = true },
                         modifier = Modifier.padding(top = 12.dp)
                     )
                 }
@@ -216,9 +248,9 @@ fun HomeScreenPreview() {
                 isLoading = false,
             ),
             onPersonClick = {},
-            onAddPersonClick = {},
-            onGiveMoneyClick = {},
-            onRecordReturnClick = {}
+            onAddPersonConfirm = {},
+            onGiveMoneyConfirm = { _, _, _ -> },
+            onRecordReturnConfirm = { _, _, _ -> }
         )
     }
 }
@@ -230,9 +262,9 @@ fun HomeScreenEmptyPreview() {
         HomeScreen(
             uiState = PeopleUiState(people = emptyList()),
             onPersonClick = {},
-            onAddPersonClick = {},
-            onGiveMoneyClick = {},
-            onRecordReturnClick = {}
+            onAddPersonConfirm = {},
+            onGiveMoneyConfirm = { _, _, _ -> },
+            onRecordReturnConfirm = { _, _, _ -> }
         )
     }
 }
