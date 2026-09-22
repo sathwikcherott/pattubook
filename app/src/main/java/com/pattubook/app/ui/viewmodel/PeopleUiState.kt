@@ -17,5 +17,6 @@ sealed interface PeopleUiEvent {
     data class MoneyAdded(val entryId: Long) : PeopleUiEvent
     data object PersonUpdated : PeopleUiEvent
     data object PersonDeleted : PeopleUiEvent
+    data object AllDataDeleted : PeopleUiEvent
     data class Error(val message: String) : PeopleUiEvent
 }

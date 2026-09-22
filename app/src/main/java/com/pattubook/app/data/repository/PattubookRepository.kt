@@ -1,5 +1,7 @@
 package com.pattubook.app.data.repository
 
+import android.content.Context
+import android.net.Uri
 import androidx.room.withTransaction
 import com.pattubook.app.data.local.PattubookDatabase
 import com.pattubook.app.data.local.dao.LedgerEntryDao
@@ -7,9 +9,14 @@ import com.pattubook.app.data.local.dao.PersonDao
 import com.pattubook.app.data.local.entity.LedgerEntry
 import com.pattubook.app.data.local.entity.LedgerEntryType
 import com.pattubook.app.data.local.entity.Person
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.IOException
 
 /**
  * Main repository handling data operations and business rules for Pattubook.
@@ -281,6 +288,205 @@ class PattubookRepository(
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    // --- Data Management & Backup Operations ---
+
+    /**
+     * Atomically deletes all ledger entries and people from the Room database.
+     */
+    suspend fun deleteAllData(): Result<Unit> {
+        val deleteOperation: suspend () -> Result<Unit> = {
+            ledgerEntryDao.deleteAllEntries()
+            personDao.deleteAllPeople()
+            Result.success(Unit)
+        }
+
+        return try {
+            if (database != null) {
+                database.withTransaction { deleteOperation() }
+            } else {
+                deleteOperation()
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Generates a self-contained, versioned JSON backup of all people and ledger entries.
+     * All monetary values are preserved strictly as Long integer paise.
+     */
+    suspend fun generateBackupJson(): Result<String> {
+        return try {
+            val people = personDao.getAllPeopleOnce()
+            val entries = ledgerEntryDao.getAllEntriesOnce()
+
+            val root = JSONObject()
+            root.put("version", 1)
+            root.put("timestamp", System.currentTimeMillis())
+
+            val peopleArray = JSONArray()
+            for (person in people) {
+                val personObj = JSONObject()
+                personObj.put("id", person.id)
+                personObj.put("name", person.name)
+                personObj.put("createdAt", person.createdAt)
+                peopleArray.put(personObj)
+            }
+            root.put("people", peopleArray)
+
+            val entriesArray = JSONArray()
+            for (entry in entries) {
+                val entryObj = JSONObject()
+                entryObj.put("id", entry.id)
+                entryObj.put("personId", entry.personId)
+                entryObj.put("amountPaise", entry.amountPaise)
+                entryObj.put("type", entry.type.name)
+                entryObj.put("timestamp", entry.timestamp)
+                if (entry.note != null) {
+                    entryObj.put("note", entry.note)
+                } else {
+                    entryObj.put("note", JSONObject.NULL)
+                }
+                entriesArray.put(entryObj)
+            }
+            root.put("ledgerEntries", entriesArray)
+
+            Result.success(root.toString(2))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Writes the backup JSON string to an SAF document Uri off the main thread.
+     */
+    suspend fun exportBackupToUri(context: Context, uri: Uri, jsonString: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(jsonString.toByteArray(Charsets.UTF_8))
+                    outputStream.flush()
+                } ?: return@withContext Result.failure(IOException("Failed to open output stream for chosen file location."))
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
+    }
+
+    // --- Restore Data Import Operations ---
+
+    /**
+     * Reads, parses, validates, and restores a backup JSON file from the chosen SAF Uri.
+     * Performs atomic database replacement inside a Room transaction ONLY IF validation passes.
+     */
+    suspend fun restoreBackupFromUri(context: Context, uri: Uri): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // 1. Read JSON string from Uri
+                val jsonString = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    inputStream.bufferedReader(Charsets.UTF_8).readText()
+                } ?: return@withContext Result.failure(IOException("Failed to open input stream for backup file."))
+
+                // 2. Parse & Validate JSON
+                val root = JSONObject(jsonString)
+
+                if (!root.has("version")) {
+                    return@withContext Result.failure(IllegalArgumentException("Invalid backup file: Missing 'version' field."))
+                }
+                val version = root.getInt("version")
+                if (version != 1) {
+                    return@withContext Result.failure(IllegalArgumentException("Unsupported backup version: $version."))
+                }
+
+                val peopleArray = root.optJSONArray("people")
+                    ?: return@withContext Result.failure(IllegalArgumentException("Invalid backup file: Missing 'people' array."))
+
+                val entriesArray = root.optJSONArray("ledgerEntries")
+                    ?: return@withContext Result.failure(IllegalArgumentException("Invalid backup file: Missing 'ledgerEntries' array."))
+
+                val parsedPeople = mutableListOf<Person>()
+                val personIdsSet = mutableSetOf<Long>()
+
+                for (i in 0 until peopleArray.length()) {
+                    val pObj = peopleArray.getJSONObject(i)
+                    val id = pObj.getLong("id")
+                    val name = pObj.getString("name").trim()
+                    val createdAt = pObj.getLong("createdAt")
+
+                    if (name.isEmpty()) {
+                        return@withContext Result.failure(IllegalArgumentException("Invalid backup: Person with ID $id has a blank name."))
+                    }
+
+                    if (!personIdsSet.add(id)) {
+                        return@withContext Result.failure(IllegalArgumentException("Invalid backup: Duplicate person ID $id found."))
+                    }
+
+                    parsedPeople.add(Person(id = id, name = name, createdAt = createdAt))
+                }
+
+                val parsedEntries = mutableListOf<LedgerEntry>()
+                val entryIdsSet = mutableSetOf<Long>()
+
+                for (i in 0 until entriesArray.length()) {
+                    val eObj = entriesArray.getJSONObject(i)
+                    val id = eObj.getLong("id")
+                    val personId = eObj.getLong("personId")
+                    val amountPaise = eObj.getLong("amountPaise")
+                    val typeStr = eObj.getString("type")
+                    val timestamp = eObj.getLong("timestamp")
+                    val note = if (eObj.isNull("note")) null else eObj.optString("note").trim().ifEmpty { null }
+
+                    if (!personIdsSet.contains(personId)) {
+                        return@withContext Result.failure(IllegalArgumentException("Invalid backup: Ledger entry $id references non-existent person ID $personId."))
+                    }
+
+                    if (amountPaise < 0) {
+                        return@withContext Result.failure(IllegalArgumentException("Invalid backup: Ledger entry $id has negative amount $amountPaise."))
+                    }
+
+                    val type = try {
+                        LedgerEntryType.valueOf(typeStr)
+                    } catch (_: Exception) {
+                        return@withContext Result.failure(IllegalArgumentException("Invalid backup: Ledger entry $id has unknown transaction type '$typeStr'."))
+                    }
+
+                    if (!entryIdsSet.add(id)) {
+                        return@withContext Result.failure(IllegalArgumentException("Invalid backup: Duplicate ledger entry ID $id found."))
+                    }
+
+                    parsedEntries.add(
+                        LedgerEntry(
+                            id = id,
+                            personId = personId,
+                            amountPaise = amountPaise,
+                            type = type,
+                            timestamp = timestamp,
+                            note = note
+                        )
+                    )
+                }
+
+                // 3. Perform Atomic Database Replacement inside a Room Transaction
+                val replaceOperation: suspend () -> Result<Unit> = {
+                    ledgerEntryDao.deleteAllEntries()
+                    personDao.deleteAllPeople()
+                    personDao.insertPeople(parsedPeople)
+                    ledgerEntryDao.insertEntries(parsedEntries)
+                    Result.success(Unit)
+                }
+
+                if (database != null) {
+                    database.withTransaction { replaceOperation() }
+                } else {
+                    replaceOperation()
+                }
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
 }

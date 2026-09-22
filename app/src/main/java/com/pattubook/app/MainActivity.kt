@@ -13,6 +13,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -24,6 +25,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.pattubook.app.data.local.PattubookDatabase
 import com.pattubook.app.data.repository.PattubookRepository
+import com.pattubook.app.ui.breakdown.OutstandingBreakdownScreen
 import com.pattubook.app.ui.components.NavDestination
 import com.pattubook.app.ui.detail.PersonDetailScreen
 import com.pattubook.app.ui.home.HomeScreen
@@ -31,6 +33,7 @@ import com.pattubook.app.ui.more.MoreScreen
 import com.pattubook.app.ui.theme.PattubookTheme
 import com.pattubook.app.ui.viewmodel.PeopleViewModel
 import com.pattubook.app.ui.viewmodel.PersonDetailViewModel
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,7 +44,7 @@ class MainActivity : ComponentActivity() {
         val repository = PattubookRepository(
             personDao = database.personDao(),
             ledgerEntryDao = database.ledgerEntryDao(),
-            database = database
+            database = database,
         )
         val peopleViewModelFactory = PeopleViewModel.Factory(repository)
 
@@ -92,6 +95,9 @@ class MainActivity : ComponentActivity() {
                             onRecordReturnConfirm = { personId, amountPaise, note ->
                                 peopleViewModel.addMoneyGivenBack(personId, amountPaise, note)
                             },
+                            onBalanceCardClick = {
+                                navController.navigate("outstanding_breakdown")
+                            },
                             onBottomNavSelected = { destination ->
                                 when (destination) {
                                     NavDestination.HOME -> {}
@@ -103,6 +109,21 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
+                            }
+                        )
+                    }
+
+                    composable("outstanding_breakdown") {
+                        val peopleViewModel: PeopleViewModel = viewModel(factory = peopleViewModelFactory)
+                        val uiState by peopleViewModel.uiState.collectAsState()
+
+                        OutstandingBreakdownScreen(
+                            uiState = uiState,
+                            onBackClick = {
+                                navController.popBackStack()
+                            },
+                            onPersonClick = { personId ->
+                                navController.navigate("person_detail/$personId")
                             }
                         )
                     }
@@ -141,6 +162,9 @@ class MainActivity : ComponentActivity() {
                     }
 
                     composable("more") {
+                        val peopleViewModel: PeopleViewModel = viewModel(factory = peopleViewModelFactory)
+                        val coroutineScope = rememberCoroutineScope()
+
                         MoreScreen(
                             onDestinationSelected = { destination ->
                                 when (destination) {
@@ -153,6 +177,35 @@ class MainActivity : ComponentActivity() {
                                     }
                                     NavDestination.MORE -> {}
                                 }
+                            },
+                            onExportBackupToUri = { uri ->
+                                coroutineScope.launch {
+                                    val jsonResult = repository.generateBackupJson()
+                                    jsonResult.onSuccess { json ->
+                                        val exportResult = repository.exportBackupToUri(context, uri, json)
+                                        exportResult.onSuccess {
+                                            Toast.makeText(context, "Backup saved successfully!", Toast.LENGTH_SHORT).show()
+                                        }.onFailure { e ->
+                                            Toast.makeText(context, e.message ?: "Failed to write backup file.", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }.onFailure { e ->
+                                        Toast.makeText(context, e.message ?: "Failed to generate backup.", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
+                            onImportBackupFromUri = { uri ->
+                                coroutineScope.launch {
+                                    val restoreResult = repository.restoreBackupFromUri(context, uri)
+                                    restoreResult.onSuccess {
+                                        Toast.makeText(context, "Data restored successfully!", Toast.LENGTH_SHORT).show()
+                                    }.onFailure { e ->
+                                        Toast.makeText(context, e.message ?: "Failed to restore backup.", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            },
+                            onDeleteAllDataConfirm = {
+                                peopleViewModel.deleteAllData()
+                                Toast.makeText(context, "All data deleted", Toast.LENGTH_SHORT).show()
                             }
                         )
                     }

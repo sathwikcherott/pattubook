@@ -55,6 +55,7 @@ fun HomeScreen(
     onRecordReturnConfirm: (personId: Long, amountPaise: Long, note: String?) -> Unit,
     modifier: Modifier = Modifier,
     onBottomNavSelected: (NavDestination) -> Unit = {},
+    onBalanceCardClick: () -> Unit = {},
 ) {
     var selectedNavDestination by remember { mutableStateOf(NavDestination.HOME) }
     var showAddPersonDialog by remember { mutableStateOf(false) }
@@ -153,6 +154,7 @@ fun HomeScreen(
                 peopleCount = uiState.people.size,
                 totalGivenPaise = uiState.totalGivenPaise,
                 totalReturnedPaise = uiState.totalGivenBackPaise,
+                onClick = onBalanceCardClick,
             )
 
             Spacer(modifier = Modifier.height(20.dp))

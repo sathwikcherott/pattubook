@@ -20,6 +20,9 @@ interface PersonDao {
     @Query("SELECT * FROM person WHERE id = :id")
     suspend fun getPersonById(id: Long): Person?
 
+    @Query("SELECT * FROM person")
+    suspend fun getAllPeopleOnce(): List<Person>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPerson(person: Person): Long
 
@@ -28,4 +31,10 @@ interface PersonDao {
 
     @Delete
     suspend fun deletePerson(person: Person): Int
+
+    @Query("DELETE FROM person")
+    suspend fun deleteAllPeople(): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPeople(people: List<Person>): List<Long>
 }

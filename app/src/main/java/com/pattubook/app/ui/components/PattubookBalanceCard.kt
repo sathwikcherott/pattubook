@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import com.pattubook.app.ui.theme.AccentBlue
 import com.pattubook.app.ui.theme.AccentGreen
 import com.pattubook.app.ui.theme.AccentGreenContainer
 import com.pattubook.app.ui.theme.BorderSubtle
+import com.pattubook.app.ui.theme.DarkBackground
 import com.pattubook.app.ui.theme.DarkSurface
 import com.pattubook.app.ui.theme.DarkSurfaceVariant
 import com.pattubook.app.ui.theme.PattubookTheme
@@ -47,6 +49,7 @@ fun PattubookBalanceCard(
     modifier: Modifier = Modifier,
     totalGivenPaise: Long = 0L,
     totalReturnedPaise: Long = 0L,
+    onClick: (() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(28.dp)
 
@@ -57,8 +60,10 @@ fun PattubookBalanceCard(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
+                        AccentGreen.copy(alpha = 0.18f),
                         DarkSurfaceVariant,
                         DarkSurface,
+                        DarkBackground,
                     )
                 )
             )
@@ -66,11 +71,18 @@ fun PattubookBalanceCard(
                 width = 1.dp,
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        AccentGreen.copy(alpha = 0.35f),
+                        AccentGreen.copy(alpha = 0.40f),
                         BorderSubtle,
                     )
                 ),
                 shape = shape
+            )
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable { onClick() }
+                } else {
+                    Modifier
+                }
             )
             .padding(24.dp)
     ) {
@@ -200,6 +212,7 @@ fun PattubookBalanceCardPreview() {
             peopleCount = 4,
             totalGivenPaise = 1520000L,
             totalReturnedPaise = 275000L,
+            onClick = {}
         )
     }
 }

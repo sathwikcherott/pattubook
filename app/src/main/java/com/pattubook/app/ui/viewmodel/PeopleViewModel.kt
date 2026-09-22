@@ -142,6 +142,19 @@ class PeopleViewModel(
         }
     }
 
+    fun deleteAllData() {
+        viewModelScope.launch {
+            val result = repository.deleteAllData()
+            result.onSuccess {
+                _eventChannel.send(PeopleUiEvent.AllDataDeleted)
+            }.onFailure { throwable ->
+                val userMsg = throwable.message ?: "Failed to delete all data."
+                _errorMessage.value = userMsg
+                _eventChannel.send(PeopleUiEvent.Error(userMsg))
+            }
+        }
+    }
+
     fun clearError() {
         _errorMessage.value = null
     }

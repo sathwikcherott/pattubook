@@ -23,6 +23,9 @@ interface LedgerEntryDao {
     @Query("SELECT * FROM ledger_entry WHERE id = :id")
     suspend fun getEntryById(id: Long): LedgerEntry?
 
+    @Query("SELECT * FROM ledger_entry")
+    suspend fun getAllEntriesOnce(): List<LedgerEntry>
+
     @Query("SELECT * FROM ledger_entry ORDER BY timestamp DESC, id DESC LIMIT 1")
     suspend fun getLatestEntry(): LedgerEntry?
 
@@ -43,6 +46,12 @@ interface LedgerEntryDao {
 
     @Delete
     suspend fun deleteEntry(entry: LedgerEntry): Int
+
+    @Query("DELETE FROM ledger_entry")
+    suspend fun deleteAllEntries(): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEntries(entries: List<LedgerEntry>): List<Long>
 
     @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM ledger_entry WHERE personId = :personId AND type = 'GIVEN'")
     fun observeTotalGiven(personId: Long): Flow<Long>
