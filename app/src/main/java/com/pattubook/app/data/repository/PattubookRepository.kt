@@ -36,7 +36,7 @@ class PattubookRepository(
 
         val person = Person(
             name = trimmedName,
-            createdAt = System.currentTimeMillis()
+            createdAt = System.currentTimeMillis(),
         )
         return try {
             val id = personDao.insertPerson(person)
@@ -207,6 +207,56 @@ class PattubookRepository(
         return try {
             ledgerEntryDao.deleteEntry(entry)
             Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // --- Persistent Undo Operations ---
+
+    /**
+     * Observes the most recent undoable ledger entry (globally or for a specific person).
+     */
+    fun observeLatestEntry(personId: Long? = null): Flow<LedgerEntry?> {
+        return if (personId == null) {
+            ledgerEntryDao.observeLatestEntry()
+        } else {
+            ledgerEntryDao.observeLatestEntryForPerson(personId)
+        }
+    }
+
+    /**
+     * Finds and deletes the most recent undoable LedgerEntry atomically.
+     * Orders entries by timestamp DESC, id DESC to ensure reverse chronological undoing,
+     * using the auto-generated ID as a tie-breaker for same-millisecond transactions.
+     *
+     * @param personId Optional person ID to undo the last transaction specifically for that person.
+     *                 If null, undos the globally latest ledger entry.
+     * @return Result containing the deleted LedgerEntry details on success,
+     *         or a failure result (e.g. NoSuchElementException) if nothing is available to undo.
+     */
+    suspend fun undoLastLedgerEntry(personId: Long? = null): Result<LedgerEntry> {
+        val undoOperation: suspend () -> Result<LedgerEntry> = {
+            val latestEntry = if (personId == null) {
+                ledgerEntryDao.getLatestEntry()
+            } else {
+                ledgerEntryDao.getLatestEntryForPerson(personId)
+            }
+
+            if (latestEntry == null) {
+                Result.failure(NoSuchElementException("No transaction available to undo."))
+            } else {
+                ledgerEntryDao.deleteEntry(latestEntry)
+                Result.success(latestEntry)
+            }
+        }
+
+        return try {
+            if (database != null) {
+                database.withTransaction { undoOperation() }
+            } else {
+                undoOperation()
+            }
         } catch (e: Exception) {
             Result.failure(e)
         }

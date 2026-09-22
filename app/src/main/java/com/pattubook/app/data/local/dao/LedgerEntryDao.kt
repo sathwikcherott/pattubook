@@ -23,6 +23,18 @@ interface LedgerEntryDao {
     @Query("SELECT * FROM ledger_entry WHERE id = :id")
     suspend fun getEntryById(id: Long): LedgerEntry?
 
+    @Query("SELECT * FROM ledger_entry ORDER BY timestamp DESC, id DESC LIMIT 1")
+    suspend fun getLatestEntry(): LedgerEntry?
+
+    @Query("SELECT * FROM ledger_entry ORDER BY timestamp DESC, id DESC LIMIT 1")
+    fun observeLatestEntry(): Flow<LedgerEntry?>
+
+    @Query("SELECT * FROM ledger_entry WHERE personId = :personId ORDER BY timestamp DESC, id DESC LIMIT 1")
+    suspend fun getLatestEntryForPerson(personId: Long): LedgerEntry?
+
+    @Query("SELECT * FROM ledger_entry WHERE personId = :personId ORDER BY timestamp DESC, id DESC LIMIT 1")
+    fun observeLatestEntryForPerson(personId: Long): Flow<LedgerEntry?>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEntry(entry: LedgerEntry): Long
 
