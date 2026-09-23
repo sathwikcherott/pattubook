@@ -79,6 +79,7 @@ fun PersonDetailScreen(
                 people = listOf(person),
                 personBalancesMap = mapOf(person.id to uiState.outstandingBalancePaise),
                 initialPersonId = person.id,
+                showPersonSelector = false,
                 onDismiss = { activeTransactionType = null },
                 onConfirm = { _, amountPaise, note ->
                     activeTransactionType = null

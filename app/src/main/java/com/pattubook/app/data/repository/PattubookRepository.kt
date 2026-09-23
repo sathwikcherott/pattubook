@@ -32,6 +32,8 @@ class PattubookRepository(
 
     fun observeAllPeople(): Flow<List<Person>> = personDao.observeAllPeople()
 
+    fun observeDeletedPeople(): Flow<List<Person>> = personDao.observeDeletedPeople()
+
     fun observePersonById(id: Long): Flow<Person?> = personDao.observePersonById(id)
 
     suspend fun getPersonById(id: Long): Person? = personDao.getPersonById(id)
@@ -69,13 +71,69 @@ class PattubookRepository(
         }
     }
 
-    suspend fun deletePerson(person: Person): Result<Unit> {
+    suspend fun setPersonHidden(personId: Long, isHidden: Boolean): Result<Unit> {
         return try {
-            personDao.deletePerson(person)
+            personDao.setPersonHidden(personId, isHidden)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    suspend fun movePersonToRecycleBin(personId: Long): Result<Unit> {
+        return try {
+            personDao.setPersonDeleted(personId, true)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun restorePerson(personId: Long): Result<Unit> {
+        return try {
+            personDao.setPersonDeleted(personId, false)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun permanentlyDeletePerson(person: Person): Result<Unit> {
+        val deleteOp: suspend () -> Result<Unit> = {
+            ledgerEntryDao.deleteEntriesForPerson(person.id)
+            personDao.deletePerson(person)
+            Result.success(Unit)
+        }
+        return try {
+            if (database != null) {
+                database.withTransaction { deleteOp() }
+            } else {
+                deleteOp()
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun emptyRecycleBin(): Result<Unit> {
+        val emptyOp: suspend () -> Result<Unit> = {
+            ledgerEntryDao.emptyRecycleBinEntries()
+            personDao.emptyRecycleBinPeople()
+            Result.success(Unit)
+        }
+        return try {
+            if (database != null) {
+                database.withTransaction { emptyOp() }
+            } else {
+                emptyOp()
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deletePerson(person: Person): Result<Unit> {
+        return movePersonToRecycleBin(person.id)
     }
 
     // --- Transaction Operations (Money Given / Given Back) ---
@@ -333,6 +391,8 @@ class PattubookRepository(
                 personObj.put("id", person.id)
                 personObj.put("name", person.name)
                 personObj.put("createdAt", person.createdAt)
+                personObj.put("isHidden", person.isHidden)
+                personObj.put("isDeleted", person.isDeleted)
                 peopleArray.put(personObj)
             }
             root.put("people", peopleArray)
@@ -416,6 +476,8 @@ class PattubookRepository(
                     val id = pObj.getLong("id")
                     val name = pObj.getString("name").trim()
                     val createdAt = pObj.getLong("createdAt")
+                    val isHidden = pObj.optBoolean("isHidden", false)
+                    val isDeleted = pObj.optBoolean("isDeleted", false)
 
                     if (name.isEmpty()) {
                         return@withContext Result.failure(IllegalArgumentException("Invalid backup: Person with ID $id has a blank name."))
@@ -425,7 +487,15 @@ class PattubookRepository(
                         return@withContext Result.failure(IllegalArgumentException("Invalid backup: Duplicate person ID $id found."))
                     }
 
-                    parsedPeople.add(Person(id = id, name = name, createdAt = createdAt))
+                    parsedPeople.add(
+                        Person(
+                            id = id,
+                            name = name,
+                            createdAt = createdAt,
+                            isHidden = isHidden,
+                            isDeleted = isDeleted,
+                        )
+                    )
                 }
 
                 val parsedEntries = mutableListOf<LedgerEntry>()

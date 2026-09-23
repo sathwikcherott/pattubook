@@ -50,6 +50,12 @@ interface LedgerEntryDao {
     @Query("DELETE FROM ledger_entry")
     suspend fun deleteAllEntries(): Int
 
+    @Query("DELETE FROM ledger_entry WHERE personId = :personId")
+    suspend fun deleteEntriesForPerson(personId: Long): Int
+
+    @Query("DELETE FROM ledger_entry WHERE personId IN (SELECT id FROM person WHERE isDeleted = 1)")
+    suspend fun emptyRecycleBinEntries(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEntries(entries: List<LedgerEntry>): List<Long>
 
@@ -65,10 +71,20 @@ interface LedgerEntryDao {
     @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM ledger_entry WHERE personId = :personId AND type = 'GIVEN_BACK'")
     suspend fun getTotalGivenBack(personId: Long): Long
 
-    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM ledger_entry WHERE type = 'GIVEN'")
+    @Query("""
+        SELECT COALESCE(SUM(l.amountPaise), 0)
+        FROM ledger_entry l
+        INNER JOIN person p ON l.personId = p.id
+        WHERE p.isDeleted = 0 AND p.isHidden = 0 AND l.type = 'GIVEN'
+    """)
     fun observeGlobalTotalGiven(): Flow<Long>
 
-    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM ledger_entry WHERE type = 'GIVEN_BACK'")
+    @Query("""
+        SELECT COALESCE(SUM(l.amountPaise), 0)
+        FROM ledger_entry l
+        INNER JOIN person p ON l.personId = p.id
+        WHERE p.isDeleted = 0 AND p.isHidden = 0 AND l.type = 'GIVEN_BACK'
+    """)
     fun observeGlobalTotalGivenBack(): Flow<Long>
 
     @Query("""

@@ -1,8 +1,9 @@
 package com.pattubook.app.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,11 +16,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -29,23 +42,30 @@ import com.pattubook.app.ui.theme.AccentBlue
 import com.pattubook.app.ui.theme.AccentBlueContainer
 import com.pattubook.app.ui.theme.AccentGreen
 import com.pattubook.app.ui.theme.AccentGreenContainer
+import com.pattubook.app.ui.theme.AccentRed
 import com.pattubook.app.ui.theme.BorderSubtle
 import com.pattubook.app.ui.theme.DarkSurface
 import com.pattubook.app.ui.theme.DarkSurfaceVariant
 import com.pattubook.app.ui.theme.PattubookTheme
 import com.pattubook.app.ui.theme.TextMuted
 import com.pattubook.app.ui.theme.TextPrimary
+import com.pattubook.app.ui.theme.TextSecondary
 import com.pattubook.app.ui.util.CurrencyFormatter
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PersonBalanceRow(
     person: Person,
     outstandingBalancePaise: Long,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onHideClick: () -> Unit = {},
+    onUnhideClick: () -> Unit = {},
+    onDeleteClick: () -> Unit = {},
 ) {
     val cardShape = RoundedCornerShape(18.dp)
     val initialLetter = person.name.trim().take(1).uppercase()
+    var dropdownExpanded by remember { mutableStateOf(false) }
 
     val (statusLabel, statusColor, statusContainer) = when {
         outstandingBalancePaise > 0 -> Triple("Owes you", AccentGreen, AccentGreenContainer)
@@ -53,13 +73,19 @@ fun PersonBalanceRow(
         else -> Triple("Settled", TextMuted, DarkSurfaceVariant)
     }
 
+    val alphaAmount = if (person.isHidden) 0.65f else 1.0f
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(cardShape)
+            .alpha(alphaAmount)
             .background(DarkSurface)
             .border(1.dp, BorderSubtle, cardShape)
-            .clickable { onClick() }
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = { dropdownExpanded = true }
+            )
             .padding(16.dp)
     ) {
         Row(
@@ -91,12 +117,30 @@ fun PersonBalanceRow(
                 Spacer(modifier = Modifier.width(14.dp))
 
                 Column {
-                    Text(
-                        text = person.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = TextPrimary,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = person.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        if (person.isHidden) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(DarkSurfaceVariant)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "Hidden",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = TextSecondary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(2.dp))
 
@@ -135,6 +179,87 @@ fun PersonBalanceRow(
                 fontWeight = FontWeight.Bold
             )
         }
+
+        // Long-Press Contextual Action Menu
+        DropdownMenu(
+            expanded = dropdownExpanded,
+            onDismissRequest = { dropdownExpanded = false },
+            modifier = Modifier.background(DarkSurfaceVariant)
+        ) {
+            if (person.isHidden) {
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Unhide Person",
+                                tint = AccentGreen,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Unhide Person",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextPrimary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    },
+                    onClick = {
+                        dropdownExpanded = false
+                        onUnhideClick()
+                    }
+                )
+            } else {
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "Hide Person",
+                                tint = TextSecondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Hide Person",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextPrimary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    },
+                    onClick = {
+                        dropdownExpanded = false
+                        onHideClick()
+                    }
+                )
+            }
+
+            DropdownMenuItem(
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Person",
+                            tint = AccentRed,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Delete Person",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AccentRed,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                },
+                onClick = {
+                    dropdownExpanded = false
+                    onDeleteClick()
+                }
+            )
+        }
     }
 }
 
@@ -152,8 +277,8 @@ fun PersonBalanceRowPreview() {
                 onClick = {}
             )
             PersonBalanceRow(
-                person = Person(id = 2, name = "Ananya"),
-                outstandingBalancePaise = 0L,
+                person = Person(id = 2, name = "Ananya", isHidden = true),
+                outstandingBalancePaise = 30000L,
                 onClick = {}
             )
             PersonBalanceRow(

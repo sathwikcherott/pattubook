@@ -63,6 +63,7 @@ fun AddTransactionDialog(
     onConfirm: (personId: Long, amountPaise: Long, note: String?) -> Unit,
     modifier: Modifier = Modifier,
     initialPersonId: Long? = null,
+    showPersonSelector: Boolean = true,
 ) {
     var selectedPerson by remember {
         mutableStateOf(
@@ -121,88 +122,90 @@ fun AddTransactionDialog(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Person Selector
-            Text(
-                text = "Person",
-                style = MaterialTheme.typography.labelMedium,
-                color = TextSecondary
-            )
-            Spacer(modifier = Modifier.height(6.dp))
+            // Person Selector (Only shown if showPersonSelector == true)
+            if (showPersonSelector) {
+                Text(
+                    text = "Person",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondary
+                )
+                Spacer(modifier = Modifier.height(6.dp))
 
-            val selectorShape = RoundedCornerShape(12.dp)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(selectorShape)
-                    .background(DarkSurfaceVariant)
-                    .border(1.dp, BorderSubtle, selectorShape)
-                    .clickable { personDropdownExpanded = true }
-                    .padding(horizontal = 14.dp, vertical = 12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                val selectorShape = RoundedCornerShape(12.dp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(selectorShape)
+                        .background(DarkSurfaceVariant)
+                        .border(1.dp, BorderSubtle, selectorShape)
+                        .clickable { personDropdownExpanded = true }
+                        .padding(horizontal = 14.dp, vertical = 12.dp)
                 ) {
-                    val personName = selectedPerson?.name ?: "Select Person"
-                    Text(
-                        text = personName,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = if (selectedPerson != null) TextPrimary else TextSecondary,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Icon(
-                        imageVector = Icons.Default.ArrowDropDown,
-                        contentDescription = null,
-                        tint = TextSecondary
-                    )
-                }
-
-                DropdownMenu(
-                    expanded = personDropdownExpanded,
-                    onDismissRequest = { personDropdownExpanded = false },
-                    modifier = Modifier.background(DarkSurfaceVariant)
-                ) {
-                    people.forEach { p ->
-                        val balance = personBalancesMap[p.id] ?: 0L
-                        DropdownMenuItem(
-                            text = {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = p.name,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = TextPrimary,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Text(
-                                        text = CurrencyFormatter.formatPaiseToRupees(balance),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = TextSecondary
-                                    )
-                                }
-                            },
-                            onClick = {
-                                selectedPerson = p
-                                personDropdownExpanded = false
-                                if (personError != null) personError = null
-                            }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val personName = selectedPerson?.name ?: "Select Person"
+                        Text(
+                            text = personName,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (selectedPerson != null) TextPrimary else TextSecondary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = null,
+                            tint = TextSecondary
                         )
                     }
+
+                    DropdownMenu(
+                        expanded = personDropdownExpanded,
+                        onDismissRequest = { personDropdownExpanded = false },
+                        modifier = Modifier.background(DarkSurfaceVariant)
+                    ) {
+                        people.forEach { p ->
+                            val balance = personBalancesMap[p.id] ?: 0L
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = p.name,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = TextPrimary,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Text(
+                                            text = CurrencyFormatter.formatPaiseToRupees(balance),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    selectedPerson = p
+                                    personDropdownExpanded = false
+                                    if (personError != null) personError = null
+                                }
+                            )
+                        }
+                    }
                 }
-            }
 
-            if (personError != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = personError!!,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = AccentRed
-                )
-            }
+                if (personError != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = personError!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = AccentRed
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(14.dp))
+            }
 
             // Amount Field
             OutlinedTextField(

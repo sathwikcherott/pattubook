@@ -33,12 +33,15 @@ import com.pattubook.app.data.local.entity.LedgerEntryType
 import com.pattubook.app.data.local.entity.Person
 import com.pattubook.app.ui.components.AddPersonDialog
 import com.pattubook.app.ui.components.AddTransactionDialog
+import com.pattubook.app.ui.components.DeletePersonDialog
 import com.pattubook.app.ui.components.EmptyState
+import com.pattubook.app.ui.components.HidePersonDialog
 import com.pattubook.app.ui.components.NavDestination
 import com.pattubook.app.ui.components.PattubookBalanceCard
 import com.pattubook.app.ui.components.PattubookBottomBar
 import com.pattubook.app.ui.components.PattubookQuickActions
 import com.pattubook.app.ui.components.PersonBalanceRow
+import com.pattubook.app.ui.components.UnhidePersonDialog
 import com.pattubook.app.ui.theme.AccentGreen
 import com.pattubook.app.ui.theme.DarkBackground
 import com.pattubook.app.ui.theme.PattubookTheme
@@ -56,10 +59,50 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     onBottomNavSelected: (NavDestination) -> Unit = {},
     onBalanceCardClick: () -> Unit = {},
+    onHidePersonConfirm: (Person) -> Unit = {},
+    onUnhidePersonConfirm: (Person) -> Unit = {},
+    onDeletePersonConfirm: (Person) -> Unit = {},
 ) {
     var selectedNavDestination by remember { mutableStateOf(NavDestination.HOME) }
     var showAddPersonDialog by remember { mutableStateOf(false) }
     var activeTransactionType by remember { mutableStateOf<LedgerEntryType?>(null) }
+
+    var personToHide by remember { mutableStateOf<Person?>(null) }
+    var personToUnhide by remember { mutableStateOf<Person?>(null) }
+    var personToDelete by remember { mutableStateOf<Person?>(null) }
+
+    personToHide?.let { person ->
+        HidePersonDialog(
+            person = person,
+            onDismiss = { personToHide = null },
+            onConfirmHide = {
+                personToHide = null
+                onHidePersonConfirm(person)
+            }
+        )
+    }
+
+    personToUnhide?.let { person ->
+        UnhidePersonDialog(
+            person = person,
+            onDismiss = { personToUnhide = null },
+            onConfirmUnhide = {
+                personToUnhide = null
+                onUnhidePersonConfirm(person)
+            }
+        )
+    }
+
+    personToDelete?.let { person ->
+        DeletePersonDialog(
+            person = person,
+            onDismiss = { personToDelete = null },
+            onConfirmDelete = {
+                personToDelete = null
+                onDeletePersonConfirm(person)
+            }
+        )
+    }
 
     if (showAddPersonDialog) {
         AddPersonDialog(
@@ -151,7 +194,7 @@ fun HomeScreen(
             // Main Balance Card
             PattubookBalanceCard(
                 outstandingBalancePaise = uiState.totalOutstandingPaise,
-                peopleCount = uiState.people.size,
+                peopleCount = uiState.people.count { !it.isHidden },
                 totalGivenPaise = uiState.totalGivenPaise,
                 totalReturnedPaise = uiState.totalGivenBackPaise,
                 onClick = onBalanceCardClick,
@@ -181,7 +224,7 @@ fun HomeScreen(
 
                 if (uiState.people.isNotEmpty()) {
                     Text(
-                        text = "${uiState.people.size} contacts",
+                        text = "${uiState.people.count { !it.isHidden }} active",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary
                     )
@@ -224,7 +267,10 @@ fun HomeScreen(
                             PersonBalanceRow(
                                 person = person,
                                 outstandingBalancePaise = personBalance,
-                                onClick = { onPersonClick(person.id) }
+                                onClick = { onPersonClick(person.id) },
+                                onHideClick = { personToHide = person },
+                                onUnhideClick = { personToUnhide = person },
+                                onDeleteClick = { personToDelete = person }
                             )
                         }
                     }
@@ -240,7 +286,7 @@ fun HomeScreenPreview() {
     PattubookTheme {
         val samplePeople = listOf(
             Person(id = 1, name = "Jai"),
-            Person(id = 2, name = "Ananya"),
+            Person(id = 2, name = "Ananya", isHidden = true),
             Person(id = 3, name = "Karthik"),
         )
         val sampleBalances = mapOf(

@@ -65,6 +65,7 @@ fun MoreScreen(
     modifier: Modifier = Modifier,
     onExportBackupToUri: (Uri) -> Unit = {},
     onImportBackupFromUri: (Uri) -> Unit = {},
+    onOpenRecycleBinClick: () -> Unit = {},
     onDeleteAllDataConfirm: () -> Unit = {},
 ) {
     val scrollState = rememberScrollState()
@@ -169,6 +170,15 @@ fun MoreScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Data Action Cards
+            DataActionCard(
+                icon = Icons.Default.Delete,
+                title = "Recycle Bin",
+                description = "View and restore deleted people or empty the bin",
+                onClick = onOpenRecycleBinClick
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             DataActionCard(
                 icon = Icons.Default.Refresh,
                 title = "Backup Data",

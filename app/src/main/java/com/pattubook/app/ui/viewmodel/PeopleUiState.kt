@@ -4,6 +4,7 @@ import com.pattubook.app.data.local.entity.Person
 
 data class PeopleUiState(
     val people: List<Person> = emptyList(),
+    val deletedPeople: List<Person> = emptyList(),
     val outstandingBalancePaiseByPerson: Map<Long, Long> = emptyMap(),
     val totalGivenPaise: Long = 0L,
     val totalGivenBackPaise: Long = 0L,

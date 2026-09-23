@@ -30,6 +30,7 @@ import com.pattubook.app.ui.components.NavDestination
 import com.pattubook.app.ui.detail.PersonDetailScreen
 import com.pattubook.app.ui.home.HomeScreen
 import com.pattubook.app.ui.more.MoreScreen
+import com.pattubook.app.ui.recyclebin.RecycleBinScreen
 import com.pattubook.app.ui.theme.PattubookTheme
 import com.pattubook.app.ui.viewmodel.PeopleViewModel
 import com.pattubook.app.ui.viewmodel.PersonDetailViewModel
@@ -94,6 +95,15 @@ class MainActivity : ComponentActivity() {
                             },
                             onRecordReturnConfirm = { personId, amountPaise, note ->
                                 peopleViewModel.addMoneyGivenBack(personId, amountPaise, note)
+                            },
+                            onHidePersonConfirm = { person ->
+                                peopleViewModel.setPersonHidden(person.id, true)
+                            },
+                            onUnhidePersonConfirm = { person ->
+                                peopleViewModel.setPersonHidden(person.id, false)
+                            },
+                            onDeletePersonConfirm = { person ->
+                                peopleViewModel.movePersonToRecycleBin(person)
                             },
                             onBalanceCardClick = {
                                 navController.navigate("outstanding_breakdown")
@@ -178,6 +188,9 @@ class MainActivity : ComponentActivity() {
                                     NavDestination.MORE -> {}
                                 }
                             },
+                            onOpenRecycleBinClick = {
+                                navController.navigate("recycle_bin")
+                            },
                             onExportBackupToUri = { uri ->
                                 coroutineScope.launch {
                                     val jsonResult = repository.generateBackupJson()
@@ -206,6 +219,27 @@ class MainActivity : ComponentActivity() {
                             onDeleteAllDataConfirm = {
                                 peopleViewModel.deleteAllData()
                                 Toast.makeText(context, "All data deleted", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    }
+
+                    composable("recycle_bin") {
+                        val peopleViewModel: PeopleViewModel = viewModel(factory = peopleViewModelFactory)
+                        val uiState by peopleViewModel.uiState.collectAsState()
+
+                        RecycleBinScreen(
+                            uiState = uiState,
+                            onBackClick = {
+                                navController.popBackStack()
+                            },
+                            onRestorePerson = { person ->
+                                peopleViewModel.restorePerson(person)
+                            },
+                            onPermanentlyDeletePerson = { person ->
+                                peopleViewModel.permanentlyDeletePerson(person)
+                            },
+                            onEmptyRecycleBin = {
+                                peopleViewModel.emptyRecycleBin()
                             }
                         )
                     }

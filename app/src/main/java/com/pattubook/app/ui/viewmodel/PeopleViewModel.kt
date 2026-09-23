@@ -29,13 +29,25 @@ class PeopleViewModel(
 
     val uiState: StateFlow<PeopleUiState> = combine(
         repository.observeAllPeople(),
+        repository.observeDeletedPeople(),
         repository.observeAllPersonBalances(),
         repository.observeGlobalTotalGiven(),
         repository.observeGlobalTotalGivenBack(),
         repository.observeGlobalTotalOutstanding(),
-    ) { people, balancesMap, totalGiven, totalGivenBack, totalOutstanding ->
+    ) { flows ->
+        @Suppress("UNCHECKED_CAST")
+        val people = flows[0] as List<Person>
+        @Suppress("UNCHECKED_CAST")
+        val deletedPeople = flows[1] as List<Person>
+        @Suppress("UNCHECKED_CAST")
+        val balancesMap = flows[2] as Map<Long, Long>
+        val totalGiven = flows[3] as Long
+        val totalGivenBack = flows[4] as Long
+        val totalOutstanding = flows[5] as Long
+
         PeopleUiState(
             people = people,
+            deletedPeople = deletedPeople,
             outstandingBalancePaiseByPerson = balancesMap,
             totalGivenPaise = totalGiven,
             totalGivenBackPaise = totalGivenBack,
@@ -47,6 +59,7 @@ class PeopleViewModel(
         emit(
             PeopleUiState(
                 people = emptyList(),
+                deletedPeople = emptyList(),
                 outstandingBalancePaiseByPerson = emptyMap(),
                 totalGivenPaise = 0L,
                 totalGivenBackPaise = 0L,
@@ -129,17 +142,65 @@ class PeopleViewModel(
         }
     }
 
-    fun deletePerson(person: Person) {
+    fun setPersonHidden(personId: Long, isHidden: Boolean) {
         viewModelScope.launch {
-            val result = repository.deletePerson(person)
-            result.onSuccess {
-                _eventChannel.send(PeopleUiEvent.PersonDeleted)
-            }.onFailure { throwable ->
-                val userMsg = throwable.message ?: "Failed to delete person."
+            val result = repository.setPersonHidden(personId, isHidden)
+            result.onFailure { throwable ->
+                val userMsg = throwable.message ?: "Failed to update person visibility."
                 _errorMessage.value = userMsg
                 _eventChannel.send(PeopleUiEvent.Error(userMsg))
             }
         }
+    }
+
+    fun movePersonToRecycleBin(person: Person) {
+        viewModelScope.launch {
+            val result = repository.movePersonToRecycleBin(person.id)
+            result.onSuccess {
+                _eventChannel.send(PeopleUiEvent.PersonDeleted)
+            }.onFailure { throwable ->
+                val userMsg = throwable.message ?: "Failed to move person to Recycle Bin."
+                _errorMessage.value = userMsg
+                _eventChannel.send(PeopleUiEvent.Error(userMsg))
+            }
+        }
+    }
+
+    fun restorePerson(person: Person) {
+        viewModelScope.launch {
+            val result = repository.restorePerson(person.id)
+            result.onFailure { throwable ->
+                val userMsg = throwable.message ?: "Failed to restore person."
+                _errorMessage.value = userMsg
+                _eventChannel.send(PeopleUiEvent.Error(userMsg))
+            }
+        }
+    }
+
+    fun permanentlyDeletePerson(person: Person) {
+        viewModelScope.launch {
+            val result = repository.permanentlyDeletePerson(person)
+            result.onFailure { throwable ->
+                val userMsg = throwable.message ?: "Failed to permanently delete person."
+                _errorMessage.value = userMsg
+                _eventChannel.send(PeopleUiEvent.Error(userMsg))
+            }
+        }
+    }
+
+    fun emptyRecycleBin() {
+        viewModelScope.launch {
+            val result = repository.emptyRecycleBin()
+            result.onFailure { throwable ->
+                val userMsg = throwable.message ?: "Failed to empty Recycle Bin."
+                _errorMessage.value = userMsg
+                _eventChannel.send(PeopleUiEvent.Error(userMsg))
+            }
+        }
+    }
+
+    fun deletePerson(person: Person) {
+        movePersonToRecycleBin(person)
     }
 
     fun deleteAllData() {
