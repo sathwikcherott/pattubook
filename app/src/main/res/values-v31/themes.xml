@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="pattubook_dark_background">#0B0D10</color>
-
     <style name="Theme.Pattubook" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/pattubook_dark_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/pattubook_icon</item>
+        <item name="android:windowSplashScreenBackground">@color/pattubook_dark_background</item>
         <item name="android:statusBarColor">@color/pattubook_dark_background</item>
         <item name="android:navigationBarColor">@color/pattubook_dark_background</item>
     </style>
