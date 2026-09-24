@@ -50,6 +50,7 @@ import com.pattubook.app.data.local.entity.LedgerEntry
 import com.pattubook.app.data.local.entity.LedgerEntryType
 import com.pattubook.app.data.local.entity.Person
 import com.pattubook.app.ui.components.AddTransactionDialog
+import com.pattubook.app.ui.components.EditTransactionDialog
 import com.pattubook.app.ui.components.PattubookQuickActions
 import com.pattubook.app.ui.components.TransactionRow
 import com.pattubook.app.ui.theme.AccentBlue
@@ -75,10 +76,13 @@ fun PersonDetailScreen(
     onRecordReturnConfirm: (amountPaise: Long, note: String?, timestamp: Long) -> Unit,
     onUndoClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onEditTransactionConfirm: (LedgerEntry) -> Unit = {},
     onRedoClick: () -> Unit = {},
     eventFlow: Flow<PersonDetailUiEvent>? = null,
 ) {
     var activeTransactionType by remember { mutableStateOf<LedgerEntryType?>(null) }
+    var entryToEdit by remember { mutableStateOf<LedgerEntry?>(null) }
+
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(uiState) {
@@ -106,6 +110,17 @@ fun PersonDetailScreen(
                 else -> {}
             }
         }
+    }
+
+    entryToEdit?.let { entry ->
+        EditTransactionDialog(
+            entry = entry,
+            onDismiss = { entryToEdit = null },
+            onConfirm = { updatedEntry ->
+                entryToEdit = null
+                onEditTransactionConfirm(updatedEntry)
+            }
+        )
     }
 
     activeTransactionType?.let { type ->
@@ -372,7 +387,10 @@ fun PersonDetailScreen(
                             items = uiState.transactions,
                             key = { entry -> entry.id }
                         ) { entry ->
-                            TransactionRow(entry = entry)
+                            TransactionRow(
+                                entry = entry,
+                                onEditClick = { entryToEdit = entry }
+                            )
                         }
                     }
                 }

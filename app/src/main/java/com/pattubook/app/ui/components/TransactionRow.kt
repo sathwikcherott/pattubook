@@ -1,7 +1,9 @@
 package com.pattubook.app.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,11 +18,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,10 +51,12 @@ import com.pattubook.app.ui.theme.TextSecondary
 import com.pattubook.app.ui.util.CurrencyFormatter
 import com.pattubook.app.ui.util.DateFormatter
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TransactionRow(
     entry: LedgerEntry,
     modifier: Modifier = Modifier,
+    onEditClick: (LedgerEntry) -> Unit = {},
 ) {
     val cardShape = RoundedCornerShape(18.dp)
     val isGiven = entry.type == LedgerEntryType.GIVEN
@@ -54,12 +65,18 @@ fun TransactionRow(
     val typeIcon = if (isGiven) Icons.Default.Add else Icons.Default.Refresh
     val typeTitle = if (isGiven) "Money Given" else "Money Returned"
 
+    var dropdownExpanded by remember { mutableStateOf(false) }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(cardShape)
             .background(DarkSurface)
             .border(1.dp, BorderSubtle, cardShape)
+            .combinedClickable(
+                onClick = {},
+                onLongClick = { dropdownExpanded = true }
+            )
             .padding(16.dp)
     ) {
         Column {
@@ -129,6 +146,37 @@ fun TransactionRow(
                     )
                 }
             }
+        }
+
+        // Long-Press Contextual Action Menu
+        DropdownMenu(
+            expanded = dropdownExpanded,
+            onDismissRequest = { dropdownExpanded = false },
+            modifier = Modifier.background(DarkSurfaceVariant)
+        ) {
+            DropdownMenuItem(
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Transaction",
+                            tint = TextPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Edit",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                },
+                onClick = {
+                    dropdownExpanded = false
+                    onEditClick(entry)
+                }
+            )
         }
     }
 }

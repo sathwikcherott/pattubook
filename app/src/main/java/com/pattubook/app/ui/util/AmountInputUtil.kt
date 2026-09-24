@@ -1,5 +1,7 @@
 package com.pattubook.app.ui.util
 
+import java.util.Locale
+
 object AmountInputUtil {
     /**
      * Parses a string representation of Rupees (e.g., "100", "100.5", "100.50", "0.50")
@@ -31,5 +33,18 @@ object AmountInputUtil {
 
         val totalPaise = rupeesLong * 100L + paiseLong
         return if (totalPaise > 0L) totalPaise else null
+    }
+
+    /**
+     * Formats Long paise back to a plain Rupees string for editing (e.g., 50000 -> "500", 50050 -> "500.50").
+     */
+    fun formatPaiseToPlainRupees(paise: Long): String {
+        val rupees = paise / 100L
+        val remainingPaise = paise % 100L
+        return if (remainingPaise == 0L) {
+            rupees.toString()
+        } else {
+            String.format(Locale.US, "%d.%02d", rupees, remainingPaise)
+        }
     }
 }

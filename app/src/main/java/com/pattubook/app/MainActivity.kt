@@ -171,6 +171,9 @@ class MainActivity : ComponentActivity() {
                             onRedoClick = {
                                 detailViewModel.redoLastUndoneEntry()
                             },
+                            onEditTransactionConfirm = { updatedEntry ->
+                                detailViewModel.updateEntry(updatedEntry)
+                            },
                             eventFlow = detailViewModel.eventFlow,
                         )
                     }
