@@ -17,6 +17,7 @@ sealed interface PersonDetailUiEvent {
     data class MoneyAdded(val entryId: Long) : PersonDetailUiEvent
     data class UndoSuccess(val undoneEntry: LedgerEntry) : PersonDetailUiEvent
     data object UndoNothingToUndo : PersonDetailUiEvent
+    data object RedoSuccess : PersonDetailUiEvent
     data object EntryUpdated : PersonDetailUiEvent
     data object EntryDeleted : PersonDetailUiEvent
     data class Error(val message: String) : PersonDetailUiEvent

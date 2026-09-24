@@ -28,6 +28,8 @@ class PersonDetailViewModel(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private var lastUndoneEntry: LedgerEntry? = null
+
     val uiState: StateFlow<PersonDetailUiState> = combine(
         repository.observePersonById(personId),
         repository.observeEntriesForPerson(personId),
@@ -67,6 +69,7 @@ class PersonDetailViewModel(
         timestamp: Long = System.currentTimeMillis(),
         note: String? = null,
     ) {
+        lastUndoneEntry = null
         viewModelScope.launch {
             val result = repository.addMoneyGiven(
                 personId = personId,
@@ -89,6 +92,7 @@ class PersonDetailViewModel(
         timestamp: Long = System.currentTimeMillis(),
         note: String? = null,
     ) {
+        lastUndoneEntry = null
         viewModelScope.launch {
             val result = repository.addMoneyGivenBack(
                 personId = personId,
@@ -110,6 +114,7 @@ class PersonDetailViewModel(
         viewModelScope.launch {
             val result = repository.undoLastLedgerEntry(personId)
             result.onSuccess { undoneEntry ->
+                lastUndoneEntry = undoneEntry
                 _eventChannel.send(PersonDetailUiEvent.UndoSuccess(undoneEntry))
             }.onFailure { throwable ->
                 if (throwable is NoSuchElementException) {
@@ -123,7 +128,24 @@ class PersonDetailViewModel(
         }
     }
 
+    fun redoLastUndoneEntry() {
+        val entryToRedo = lastUndoneEntry ?: return
+        viewModelScope.launch {
+            val result = repository.restoreUndoneEntry(entryToRedo)
+            result.onSuccess {
+                lastUndoneEntry = null
+                _eventChannel.send(PersonDetailUiEvent.RedoSuccess)
+            }.onFailure { throwable ->
+                lastUndoneEntry = null
+                val userMsg = throwable.message ?: "Failed to redo transaction."
+                _errorMessage.value = userMsg
+                _eventChannel.send(PersonDetailUiEvent.Error(userMsg))
+            }
+        }
+    }
+
     fun updateEntry(entry: LedgerEntry) {
+        lastUndoneEntry = null
         viewModelScope.launch {
             val result = repository.updateEntry(entry)
             result.onSuccess {
@@ -137,6 +159,7 @@ class PersonDetailViewModel(
     }
 
     fun deleteEntry(entry: LedgerEntry) {
+        lastUndoneEntry = null
         viewModelScope.launch {
             val result = repository.deleteEntry(entry)
             result.onSuccess {

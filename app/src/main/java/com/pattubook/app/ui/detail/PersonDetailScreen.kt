@@ -27,8 +27,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,18 +63,50 @@ import com.pattubook.app.ui.theme.PattubookTheme
 import com.pattubook.app.ui.theme.TextPrimary
 import com.pattubook.app.ui.theme.TextSecondary
 import com.pattubook.app.ui.util.CurrencyFormatter
+import com.pattubook.app.ui.viewmodel.PersonDetailUiEvent
 import com.pattubook.app.ui.viewmodel.PersonDetailUiState
+import kotlinx.coroutines.flow.Flow
 
 @Composable
 fun PersonDetailScreen(
     uiState: PersonDetailUiState,
     onBackClick: () -> Unit,
-    onGiveMoneyConfirm: (amountPaise: Long, note: String?) -> Unit,
-    onRecordReturnConfirm: (amountPaise: Long, note: String?) -> Unit,
+    onGiveMoneyConfirm: (amountPaise: Long, note: String?, timestamp: Long) -> Unit,
+    onRecordReturnConfirm: (amountPaise: Long, note: String?, timestamp: Long) -> Unit,
     onUndoClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onRedoClick: () -> Unit = {},
+    eventFlow: Flow<PersonDetailUiEvent>? = null,
 ) {
     var activeTransactionType by remember { mutableStateOf<LedgerEntryType?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState) {
+        if (!uiState.isLoading && uiState.person == null) {
+            onBackClick()
+        }
+    }
+
+    LaunchedEffect(eventFlow) {
+        eventFlow?.collect { event ->
+            when (event) {
+                is PersonDetailUiEvent.UndoSuccess -> {
+                    val result = snackbarHostState.showSnackbar(
+                        message = "Transaction undone",
+                        actionLabel = "Redo",
+                        duration = SnackbarDuration.Short
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        onRedoClick()
+                    }
+                }
+                is PersonDetailUiEvent.UndoNothingToUndo -> {
+                    snackbarHostState.showSnackbar("Nothing to undo")
+                }
+                else -> {}
+            }
+        }
+    }
 
     activeTransactionType?.let { type ->
         val person = uiState.person
@@ -81,12 +118,12 @@ fun PersonDetailScreen(
                 initialPersonId = person.id,
                 showPersonSelector = false,
                 onDismiss = { activeTransactionType = null },
-                onConfirm = { _, amountPaise, note ->
+                onConfirm = { _, amountPaise, note, timestamp ->
                     activeTransactionType = null
                     if (type == LedgerEntryType.GIVEN) {
-                        onGiveMoneyConfirm(amountPaise, note)
+                        onGiveMoneyConfirm(amountPaise, note, timestamp)
                     } else {
-                        onRecordReturnConfirm(amountPaise, note)
+                        onRecordReturnConfirm(amountPaise, note, timestamp)
                     }
                 }
             )
@@ -97,7 +134,8 @@ fun PersonDetailScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = DarkBackground
+        containerColor = DarkBackground,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -374,8 +412,8 @@ fun PersonDetailScreenPreview() {
                 isLoading = false
             ),
             onBackClick = {},
-            onGiveMoneyConfirm = { _, _ -> },
-            onRecordReturnConfirm = { _, _ -> },
+            onGiveMoneyConfirm = { _, _, _ -> },
+            onRecordReturnConfirm = { _, _, _ -> },
             onUndoClick = {}
         )
     }

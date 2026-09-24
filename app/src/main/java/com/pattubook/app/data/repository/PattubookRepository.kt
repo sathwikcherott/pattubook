@@ -299,7 +299,7 @@ class PattubookRepository(
         }
     }
 
-    // --- Persistent Undo Operations ---
+    // --- Persistent Undo & Redo Operations ---
 
     /**
      * Observes the most recent undoable ledger entry (globally or for a specific person).
@@ -343,6 +343,30 @@ class PattubookRepository(
                 database.withTransaction { undoOperation() }
             } else {
                 undoOperation()
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Re-inserts a previously undone LedgerEntry exactly as it was.
+     */
+    suspend fun restoreUndoneEntry(entry: LedgerEntry): Result<Long> {
+        val insertOp: suspend () -> Result<Long> = {
+            val personExists = personDao.getPersonById(entry.personId) != null
+            if (!personExists) {
+                Result.failure(IllegalArgumentException("Cannot redo transaction: Person no longer exists."))
+            } else {
+                val id = ledgerEntryDao.insertEntry(entry)
+                Result.success(id)
+            }
+        }
+        return try {
+            if (database != null) {
+                database.withTransaction { insertOp() }
+            } else {
+                insertOp()
             }
         } catch (e: Exception) {
             Result.failure(e)

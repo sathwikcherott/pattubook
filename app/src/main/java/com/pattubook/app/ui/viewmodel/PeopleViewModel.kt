@@ -3,6 +3,7 @@ package com.pattubook.app.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.pattubook.app.data.local.entity.LedgerEntry
 import com.pattubook.app.data.local.entity.Person
 import com.pattubook.app.data.repository.PattubookRepository
 import kotlinx.coroutines.channels.Channel
@@ -26,6 +27,8 @@ class PeopleViewModel(
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    private var lastUndoneEntry: LedgerEntry? = null
 
     val uiState: StateFlow<PeopleUiState> = combine(
         repository.observeAllPeople(),
@@ -91,11 +94,14 @@ class PeopleViewModel(
         personId: Long,
         amountPaise: Long,
         note: String? = null,
+        timestamp: Long = System.currentTimeMillis(),
     ) {
+        lastUndoneEntry = null
         viewModelScope.launch {
             val result = repository.addMoneyGiven(
                 personId = personId,
                 amountPaise = amountPaise,
+                timestamp = timestamp,
                 note = note,
             )
             result.onSuccess { entryId ->
@@ -112,11 +118,14 @@ class PeopleViewModel(
         personId: Long,
         amountPaise: Long,
         note: String? = null,
+        timestamp: Long = System.currentTimeMillis(),
     ) {
+        lastUndoneEntry = null
         viewModelScope.launch {
             val result = repository.addMoneyGivenBack(
                 personId = personId,
                 amountPaise = amountPaise,
+                timestamp = timestamp,
                 note = note,
             )
             result.onSuccess { entryId ->

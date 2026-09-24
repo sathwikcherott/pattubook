@@ -90,11 +90,11 @@ class MainActivity : ComponentActivity() {
                             onAddPersonConfirm = { name ->
                                 peopleViewModel.addPerson(name)
                             },
-                            onGiveMoneyConfirm = { personId, amountPaise, note ->
-                                peopleViewModel.addMoneyGiven(personId, amountPaise, note)
+                            onGiveMoneyConfirm = { personId, amountPaise, note, timestamp ->
+                                peopleViewModel.addMoneyGiven(personId, amountPaise, note, timestamp)
                             },
-                            onRecordReturnConfirm = { personId, amountPaise, note ->
-                                peopleViewModel.addMoneyGivenBack(personId, amountPaise, note)
+                            onRecordReturnConfirm = { personId, amountPaise, note, timestamp ->
+                                peopleViewModel.addMoneyGivenBack(personId, amountPaise, note, timestamp)
                             },
                             onHidePersonConfirm = { person ->
                                 peopleViewModel.setPersonHidden(person.id, true)
@@ -159,15 +159,19 @@ class MainActivity : ComponentActivity() {
                             onBackClick = {
                                 navController.popBackStack()
                             },
-                            onGiveMoneyConfirm = { amountPaise, note ->
-                                detailViewModel.addMoneyGiven(amountPaise, note = note)
+                            onGiveMoneyConfirm = { amountPaise, note, timestamp ->
+                                detailViewModel.addMoneyGiven(amountPaise, timestamp = timestamp, note = note)
                             },
-                            onRecordReturnConfirm = { amountPaise, note ->
-                                detailViewModel.addMoneyGivenBack(amountPaise, note = note)
+                            onRecordReturnConfirm = { amountPaise, note, timestamp ->
+                                detailViewModel.addMoneyGivenBack(amountPaise, timestamp = timestamp, note = note)
                             },
                             onUndoClick = {
                                 detailViewModel.undoLastLedgerEntry()
-                            }
+                            },
+                            onRedoClick = {
+                                detailViewModel.redoLastUndoneEntry()
+                            },
+                            eventFlow = detailViewModel.eventFlow,
                         )
                     }
 

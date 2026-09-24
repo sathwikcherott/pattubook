@@ -54,8 +54,8 @@ fun HomeScreen(
     uiState: PeopleUiState,
     onPersonClick: (Long) -> Unit,
     onAddPersonConfirm: (String) -> Unit,
-    onGiveMoneyConfirm: (personId: Long, amountPaise: Long, note: String?) -> Unit,
-    onRecordReturnConfirm: (personId: Long, amountPaise: Long, note: String?) -> Unit,
+    onGiveMoneyConfirm: (personId: Long, amountPaise: Long, note: String?, timestamp: Long) -> Unit,
+    onRecordReturnConfirm: (personId: Long, amountPaise: Long, note: String?, timestamp: Long) -> Unit,
     modifier: Modifier = Modifier,
     onBottomNavSelected: (NavDestination) -> Unit = {},
     onBalanceCardClick: () -> Unit = {},
@@ -120,12 +120,12 @@ fun HomeScreen(
             people = uiState.people,
             personBalancesMap = uiState.outstandingBalancePaiseByPerson,
             onDismiss = { activeTransactionType = null },
-            onConfirm = { personId, amountPaise, note ->
+            onConfirm = { personId, amountPaise, note, timestamp ->
                 activeTransactionType = null
                 if (type == LedgerEntryType.GIVEN) {
-                    onGiveMoneyConfirm(personId, amountPaise, note)
+                    onGiveMoneyConfirm(personId, amountPaise, note, timestamp)
                 } else {
-                    onRecordReturnConfirm(personId, amountPaise, note)
+                    onRecordReturnConfirm(personId, amountPaise, note, timestamp)
                 }
             }
         )
@@ -305,8 +305,8 @@ fun HomeScreenPreview() {
             ),
             onPersonClick = {},
             onAddPersonConfirm = {},
-            onGiveMoneyConfirm = { _, _, _ -> },
-            onRecordReturnConfirm = { _, _, _ -> }
+            onGiveMoneyConfirm = { _, _, _, _ -> },
+            onRecordReturnConfirm = { _, _, _, _ -> }
         )
     }
 }
@@ -319,8 +319,8 @@ fun HomeScreenEmptyPreview() {
             uiState = PeopleUiState(people = emptyList()),
             onPersonClick = {},
             onAddPersonConfirm = {},
-            onGiveMoneyConfirm = { _, _, _ -> },
-            onRecordReturnConfirm = { _, _, _ -> }
+            onGiveMoneyConfirm = { _, _, _, _ -> },
+            onRecordReturnConfirm = { _, _, _, _ -> }
         )
     }
 }
