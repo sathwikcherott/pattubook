@@ -19,6 +19,6 @@ sealed interface PersonDetailUiEvent {
     data object UndoNothingToUndo : PersonDetailUiEvent
     data object RedoSuccess : PersonDetailUiEvent
     data object EntryUpdated : PersonDetailUiEvent
-    data object EntryDeleted : PersonDetailUiEvent
+    data class EntryDeleted(val entry: LedgerEntry) : PersonDetailUiEvent
     data class Error(val message: String) : PersonDetailUiEvent
 }

@@ -36,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,7 +52,7 @@ import com.pattubook.app.data.local.entity.Person
 import com.pattubook.app.ui.components.AddTransactionDialog
 import com.pattubook.app.ui.components.EditTransactionDialog
 import com.pattubook.app.ui.components.PattubookQuickActions
-import com.pattubook.app.ui.components.TransactionRow
+import com.pattubook.app.ui.components.SwipeableTransactionRow
 import com.pattubook.app.ui.theme.AccentBlue
 import com.pattubook.app.ui.theme.AccentGreen
 import com.pattubook.app.ui.theme.AccentGreenContainer
@@ -66,6 +67,7 @@ import com.pattubook.app.ui.util.CurrencyFormatter
 import com.pattubook.app.ui.viewmodel.PersonDetailUiEvent
 import com.pattubook.app.ui.viewmodel.PersonDetailUiState
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 @Composable
 fun PersonDetailScreen(
@@ -75,6 +77,7 @@ fun PersonDetailScreen(
     onRecordReturnConfirm: (amountPaise: Long, note: String?, timestamp: Long) -> Unit,
     onUndoClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onDeleteTransactionSwipe: (LedgerEntry) -> Unit = {},
     onEditTransactionConfirm: (LedgerEntry) -> Unit = {},
     onRedoClick: () -> Unit = {},
     eventFlow: Flow<PersonDetailUiEvent>? = null,
@@ -83,6 +86,7 @@ fun PersonDetailScreen(
     var entryToEdit by remember { mutableStateOf<LedgerEntry?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(uiState) {
         if (!uiState.isLoading && uiState.person == null) {
@@ -94,17 +98,33 @@ fun PersonDetailScreen(
         eventFlow?.collect { event ->
             when (event) {
                 is PersonDetailUiEvent.UndoSuccess -> {
-                    val result = snackbarHostState.showSnackbar(
-                        message = "Transaction undone",
-                        actionLabel = "Redo",
-                        duration = SnackbarDuration.Short
-                    )
-                    if (result == SnackbarResult.ActionPerformed) {
-                        onRedoClick()
+                    coroutineScope.launch {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "Transaction undone",
+                            actionLabel = "Redo",
+                            duration = SnackbarDuration.Short
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            onRedoClick()
+                        }
                     }
                 }
                 is PersonDetailUiEvent.UndoNothingToUndo -> {
-                    snackbarHostState.showSnackbar("Nothing to undo")
+                    coroutineScope.launch {
+                        snackbarHostState.showSnackbar("Nothing to undo")
+                    }
+                }
+                is PersonDetailUiEvent.EntryDeleted -> {
+                    coroutineScope.launch {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "Transaction deleted",
+                            actionLabel = "Undo",
+                            duration = SnackbarDuration.Short
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            onRedoClick()
+                        }
+                    }
                 }
                 else -> {}
             }
@@ -389,8 +409,9 @@ fun PersonDetailScreen(
                             items = uiState.transactions,
                             key = { entry -> entry.id }
                         ) { entry ->
-                            TransactionRow(
+                            SwipeableTransactionRow(
                                 entry = entry,
+                                onDeleteSwipe = onDeleteTransactionSwipe,
                                 onEditClick = { entryToEdit = entry }
                             )
                         }

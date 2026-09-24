@@ -221,6 +221,9 @@ class MainActivity : FragmentActivity() {
                                 onRedoClick = {
                                     detailViewModel.redoLastUndoneEntry()
                                 },
+                                onDeleteTransactionSwipe = { entry ->
+                                    detailViewModel.deleteEntry(entry)
+                                },
                                 onEditTransactionConfirm = { updatedEntry ->
                                     detailViewModel.updateEntry(updatedEntry)
                                 },

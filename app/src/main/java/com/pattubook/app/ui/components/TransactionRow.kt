@@ -1,9 +1,13 @@
 package com.pattubook.app.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.DropdownMenu
@@ -27,12 +32,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -42,6 +52,7 @@ import com.pattubook.app.ui.theme.AccentBlue
 import com.pattubook.app.ui.theme.AccentBlueContainer
 import com.pattubook.app.ui.theme.AccentGreen
 import com.pattubook.app.ui.theme.AccentGreenContainer
+import com.pattubook.app.ui.theme.AccentRed
 import com.pattubook.app.ui.theme.BorderSubtle
 import com.pattubook.app.ui.theme.DarkSurface
 import com.pattubook.app.ui.theme.DarkSurfaceVariant
@@ -50,6 +61,102 @@ import com.pattubook.app.ui.theme.TextPrimary
 import com.pattubook.app.ui.theme.TextSecondary
 import com.pattubook.app.ui.util.CurrencyFormatter
 import com.pattubook.app.ui.util.DateFormatter
+import kotlinx.coroutines.launch
+import kotlin.math.abs
+
+@Composable
+fun SwipeableTransactionRow(
+    entry: LedgerEntry,
+    onDeleteSwipe: (LedgerEntry) -> Unit,
+    onEditClick: (LedgerEntry) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val coroutineScope = rememberCoroutineScope()
+    var rowWidthPx by remember { mutableFloatStateOf(0f) }
+    val offsetX = remember { Animatable(0f) }
+    val cardShape = RoundedCornerShape(18.dp)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .onSizeChanged { size ->
+                rowWidthPx = size.width.toFloat()
+            }
+    ) {
+        // Red Delete Area Background
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(cardShape)
+                .background(AccentRed)
+                .padding(horizontal = 20.dp),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Delete",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onError,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete Transaction",
+                    tint = MaterialTheme.colorScheme.onError,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        // Foreground Transaction Row with Drag Gestures
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer {
+                    translationX = offsetX.value
+                }
+                .pointerInput(rowWidthPx) {
+                    if (rowWidthPx <= 0f) return@pointerInput
+                    detectHorizontalDragGestures(
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            val newOffset = (offsetX.value + dragAmount).coerceIn(-rowWidthPx, 0f)
+                            coroutineScope.launch {
+                                offsetX.snapTo(newOffset)
+                            }
+                        },
+                        onDragEnd = {
+                            val currentOffset = abs(offsetX.value)
+                            val swipeProgress = if (rowWidthPx > 0f) currentOffset / rowWidthPx else 0f
+                            if (swipeProgress > 0.70f) {
+                                // STRICTLY > 70%: Animate off-screen and delete!
+                                coroutineScope.launch {
+                                    offsetX.animateTo(-rowWidthPx, animationSpec = tween(150))
+                                    onDeleteSwipe(entry)
+                                }
+                            } else {
+                                // <= 70%: Animate back to resting position!
+                                coroutineScope.launch {
+                                    offsetX.animateTo(0f, animationSpec = spring())
+                                }
+                            }
+                        },
+                        onDragCancel = {
+                            coroutineScope.launch {
+                                offsetX.animateTo(0f, animationSpec = spring())
+                            }
+                        }
+                    )
+                }
+        ) {
+            TransactionRow(
+                entry = entry,
+                onEditClick = onEditClick
+            )
+        }
+    }
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

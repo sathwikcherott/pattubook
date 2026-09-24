@@ -159,12 +159,13 @@ class PersonDetailViewModel(
     }
 
     fun deleteEntry(entry: LedgerEntry) {
-        lastUndoneEntry = null
+        lastUndoneEntry = entry
         viewModelScope.launch {
             val result = repository.deleteEntry(entry)
             result.onSuccess {
-                _eventChannel.send(PersonDetailUiEvent.EntryDeleted)
+                _eventChannel.send(PersonDetailUiEvent.EntryDeleted(entry))
             }.onFailure { throwable ->
+                lastUndoneEntry = null
                 val userMsg = throwable.message ?: "Failed to delete entry."
                 _errorMessage.value = userMsg
                 _eventChannel.send(PersonDetailUiEvent.Error(userMsg))
