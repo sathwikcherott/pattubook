@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -52,6 +54,7 @@ import com.pattubook.app.ui.theme.AccentRedContainer
 import com.pattubook.app.ui.theme.BorderSubtle
 import com.pattubook.app.ui.theme.DarkBackground
 import com.pattubook.app.ui.theme.DarkSurface
+import com.pattubook.app.ui.theme.DarkSurfaceVariant
 import com.pattubook.app.ui.theme.PattubookTheme
 import com.pattubook.app.ui.theme.TextPrimary
 import com.pattubook.app.ui.theme.TextSecondary
@@ -63,6 +66,8 @@ import java.util.Locale
 fun MoreScreen(
     onDestinationSelected: (NavDestination) -> Unit,
     modifier: Modifier = Modifier,
+    isAppLockEnabled: Boolean = false,
+    onAppLockToggle: (Boolean) -> Unit = {},
     onExportBackupToUri: (Uri) -> Unit = {},
     onImportBackupFromUri: (Uri) -> Unit = {},
     onOpenRecycleBinClick: () -> Unit = {},
@@ -156,6 +161,75 @@ fun MoreScreen(
                 title = "Pattubook Version",
                 description = "Version 1.0.0 • Personal Debt & Lending Ledger"
             )
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // SECURITY Section Header
+            Text(
+                text = "SECURITY",
+                style = MaterialTheme.typography.labelMedium,
+                color = TextSecondary,
+                letterSpacing = 1.2.sp
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            val securityCardShape = RoundedCornerShape(20.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(securityCardShape)
+                    .background(DarkSurface)
+                    .border(1.dp, BorderSubtle, securityCardShape)
+                    .padding(18.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(AccentGreenContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = "App Lock",
+                            tint = AccentGreen,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(14.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "App Lock",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Require device authentication when opening Pattubook",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Switch(
+                        checked = isAppLockEnabled,
+                        onCheckedChange = { newValue -> onAppLockToggle(newValue) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                            checkedTrackColor = AccentGreen,
+                            uncheckedThumbColor = TextSecondary,
+                            uncheckedTrackColor = DarkSurfaceVariant
+                        )
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(28.dp))
 
