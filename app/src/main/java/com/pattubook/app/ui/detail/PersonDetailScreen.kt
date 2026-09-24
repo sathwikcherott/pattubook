@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -215,36 +214,58 @@ fun PersonDetailScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
-            // Concise Personal Balance Summary Card
-            val balanceCardShape = RoundedCornerShape(24.dp)
+            // Compact Financial Summary Card
+            val summaryCardShape = RoundedCornerShape(20.dp)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(balanceCardShape)
+                    .clip(summaryCardShape)
                     .background(DarkSurface)
-                    .border(1.dp, BorderSubtle, balanceCardShape)
-                    .padding(20.dp)
+                    .border(1.dp, BorderSubtle, summaryCardShape)
+                    .padding(18.dp)
             ) {
                 Column {
-                    Text(
-                        text = "OUTSTANDING BALANCE",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = TextSecondary,
-                        letterSpacing = 1.2.sp
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "GIVEN",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextSecondary,
+                                letterSpacing = 1.1.sp
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = CurrencyFormatter.formatPaiseToRupees(uiState.totalGivenPaise),
+                                style = MaterialTheme.typography.titleLarge,
+                                color = AccentGreen,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = "RETURNED",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextSecondary,
+                                letterSpacing = 1.1.sp
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = CurrencyFormatter.formatPaiseToRupees(uiState.totalGivenBackPaise),
+                                style = MaterialTheme.typography.titleLarge,
+                                color = AccentBlue,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
 
-                    Text(
-                        text = CurrencyFormatter.formatPaiseToRupees(uiState.outstandingBalancePaise),
-                        style = MaterialTheme.typography.displayLarge,
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     Box(
                         modifier = Modifier
@@ -253,49 +274,30 @@ fun PersonDetailScreen(
                             .background(BorderSubtle)
                     )
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    Row(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(AccentGreen)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Given: ${CurrencyFormatter.formatPaiseToRupees(uiState.totalGivenPaise)}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TextPrimary,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(AccentBlue)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Returned: ${CurrencyFormatter.formatPaiseToRupees(uiState.totalGivenBackPaise)}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TextPrimary,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
+                        Text(
+                            text = "OUTSTANDING",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextSecondary,
+                            letterSpacing = 1.2.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = CurrencyFormatter.formatPaiseToRupees(uiState.outstandingBalancePaise),
+                            style = MaterialTheme.typography.displayMedium,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Quick Actions contextual to this person
             PattubookQuickActions(
@@ -303,7 +305,7 @@ fun PersonDetailScreen(
                 onRecordReturnClick = { activeTransactionType = LedgerEntryType.GIVEN_BACK },
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Transaction History Title - Focal Area
             Row(
@@ -408,25 +410,25 @@ fun PersonDetailScreenPreview() {
             LedgerEntry(
                 id = 1,
                 personId = 1,
-                amountPaise = 200000L,
+                amountPaise = 500000L,
                 type = LedgerEntryType.GIVEN,
-                note = "Trip expenses"
+                note = "Business loan"
             ),
             LedgerEntry(
                 id = 2,
                 personId = 1,
-                amountPaise = 50000L,
+                amountPaise = 200000L,
                 type = LedgerEntryType.GIVEN_BACK,
-                note = "GPay repayment"
+                note = "Partial repayment"
             )
         )
         PersonDetailScreen(
             uiState = PersonDetailUiState(
                 person = samplePerson,
                 transactions = sampleTransactions,
-                totalGivenPaise = 200000L,
-                totalGivenBackPaise = 50000L,
-                outstandingBalancePaise = 150000L,
+                totalGivenPaise = 500000L,
+                totalGivenBackPaise = 200000L,
+                outstandingBalancePaise = 300000L,
                 isLoading = false
             ),
             onBackClick = {},
