@@ -33,6 +33,7 @@ class PeopleViewModel(
     val uiState: StateFlow<PeopleUiState> = combine(
         repository.observeAllPeople(),
         repository.observeDeletedPeople(),
+        repository.observeDeletedEntries(),
         repository.observeAllPersonBalances(),
         repository.observeGlobalTotalGiven(),
         repository.observeGlobalTotalGivenBack(),
@@ -43,14 +44,17 @@ class PeopleViewModel(
         @Suppress("UNCHECKED_CAST")
         val deletedPeople = flows[1] as List<Person>
         @Suppress("UNCHECKED_CAST")
-        val balancesMap = flows[2] as Map<Long, Long>
-        val totalGiven = flows[3] as Long
-        val totalGivenBack = flows[4] as Long
-        val totalOutstanding = flows[5] as Long
+        val deletedEntries = flows[2] as List<LedgerEntry>
+        @Suppress("UNCHECKED_CAST")
+        val balancesMap = flows[3] as Map<Long, Long>
+        val totalGiven = flows[4] as Long
+        val totalGivenBack = flows[5] as Long
+        val totalOutstanding = flows[6] as Long
 
         PeopleUiState(
             people = people,
             deletedPeople = deletedPeople,
+            deletedEntries = deletedEntries,
             outstandingBalancePaiseByPerson = balancesMap,
             totalGivenPaise = totalGiven,
             totalGivenBackPaise = totalGivenBack,
@@ -63,6 +67,7 @@ class PeopleViewModel(
             PeopleUiState(
                 people = emptyList(),
                 deletedPeople = emptyList(),
+                deletedEntries = emptyList(),
                 outstandingBalancePaiseByPerson = emptyMap(),
                 totalGivenPaise = 0L,
                 totalGivenBackPaise = 0L,
@@ -191,6 +196,28 @@ class PeopleViewModel(
             val result = repository.permanentlyDeletePerson(person)
             result.onFailure { throwable ->
                 val userMsg = throwable.message ?: "Failed to permanently delete person."
+                _errorMessage.value = userMsg
+                _eventChannel.send(PeopleUiEvent.Error(userMsg))
+            }
+        }
+    }
+
+    fun restoreDeletedEntry(entry: LedgerEntry) {
+        viewModelScope.launch {
+            val result = repository.restoreDeletedEntry(entry.id)
+            result.onFailure { throwable ->
+                val userMsg = throwable.message ?: "Failed to restore transaction."
+                _errorMessage.value = userMsg
+                _eventChannel.send(PeopleUiEvent.Error(userMsg))
+            }
+        }
+    }
+
+    fun permanentlyDeleteEntry(entry: LedgerEntry) {
+        viewModelScope.launch {
+            val result = repository.permanentlyDeleteEntry(entry.id)
+            result.onFailure { throwable ->
+                val userMsg = throwable.message ?: "Failed to permanently delete transaction."
                 _errorMessage.value = userMsg
                 _eventChannel.send(PeopleUiEvent.Error(userMsg))
             }

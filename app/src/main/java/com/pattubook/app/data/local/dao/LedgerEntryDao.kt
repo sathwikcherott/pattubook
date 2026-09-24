@@ -11,13 +11,16 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface LedgerEntryDao {
-    @Query("SELECT * FROM ledger_entry WHERE personId = :personId ORDER BY timestamp DESC")
+    @Query("SELECT * FROM ledger_entry WHERE personId = :personId AND isDeleted = 0 ORDER BY timestamp DESC")
     fun observeEntriesForPerson(personId: Long): Flow<List<LedgerEntry>>
 
-    @Query("SELECT * FROM ledger_entry WHERE personId = :personId AND type = 'GIVEN' ORDER BY timestamp DESC")
+    @Query("SELECT * FROM ledger_entry WHERE isDeleted = 1 ORDER BY timestamp DESC")
+    fun observeDeletedEntries(): Flow<List<LedgerEntry>>
+
+    @Query("SELECT * FROM ledger_entry WHERE personId = :personId AND type = 'GIVEN' AND isDeleted = 0 ORDER BY timestamp DESC")
     fun observeGivenEntriesForPerson(personId: Long): Flow<List<LedgerEntry>>
 
-    @Query("SELECT * FROM ledger_entry WHERE personId = :personId AND type = 'GIVEN_BACK' ORDER BY timestamp DESC")
+    @Query("SELECT * FROM ledger_entry WHERE personId = :personId AND type = 'GIVEN_BACK' AND isDeleted = 0 ORDER BY timestamp DESC")
     fun observeGivenBackEntriesForPerson(personId: Long): Flow<List<LedgerEntry>>
 
     @Query("SELECT * FROM ledger_entry WHERE id = :id")
@@ -26,17 +29,23 @@ interface LedgerEntryDao {
     @Query("SELECT * FROM ledger_entry")
     suspend fun getAllEntriesOnce(): List<LedgerEntry>
 
-    @Query("SELECT * FROM ledger_entry ORDER BY timestamp DESC, id DESC LIMIT 1")
+    @Query("SELECT * FROM ledger_entry WHERE isDeleted = 0 ORDER BY timestamp DESC, id DESC LIMIT 1")
     suspend fun getLatestEntry(): LedgerEntry?
 
-    @Query("SELECT * FROM ledger_entry ORDER BY timestamp DESC, id DESC LIMIT 1")
+    @Query("SELECT * FROM ledger_entry WHERE isDeleted = 0 ORDER BY timestamp DESC, id DESC LIMIT 1")
     fun observeLatestEntry(): Flow<LedgerEntry?>
 
-    @Query("SELECT * FROM ledger_entry WHERE personId = :personId ORDER BY timestamp DESC, id DESC LIMIT 1")
+    @Query("SELECT * FROM ledger_entry WHERE personId = :personId AND isDeleted = 0 ORDER BY timestamp DESC, id DESC LIMIT 1")
     suspend fun getLatestEntryForPerson(personId: Long): LedgerEntry?
 
-    @Query("SELECT * FROM ledger_entry WHERE personId = :personId ORDER BY timestamp DESC, id DESC LIMIT 1")
+    @Query("SELECT * FROM ledger_entry WHERE personId = :personId AND isDeleted = 0 ORDER BY timestamp DESC, id DESC LIMIT 1")
     fun observeLatestEntryForPerson(personId: Long): Flow<LedgerEntry?>
+
+    @Query("UPDATE ledger_entry SET isDeleted = :isDeleted WHERE id = :id")
+    suspend fun setEntryDeleted(id: Long, isDeleted: Boolean): Int
+
+    @Query("DELETE FROM ledger_entry WHERE id = :id")
+    suspend fun permanentlyDeleteEntry(id: Long): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEntry(entry: LedgerEntry): Long
@@ -53,29 +62,29 @@ interface LedgerEntryDao {
     @Query("DELETE FROM ledger_entry WHERE personId = :personId")
     suspend fun deleteEntriesForPerson(personId: Long): Int
 
-    @Query("DELETE FROM ledger_entry WHERE personId IN (SELECT id FROM person WHERE isDeleted = 1)")
+    @Query("DELETE FROM ledger_entry WHERE isDeleted = 1 OR personId IN (SELECT id FROM person WHERE isDeleted = 1)")
     suspend fun emptyRecycleBinEntries(): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEntries(entries: List<LedgerEntry>): List<Long>
 
-    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM ledger_entry WHERE personId = :personId AND type = 'GIVEN'")
+    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM ledger_entry WHERE personId = :personId AND type = 'GIVEN' AND isDeleted = 0")
     fun observeTotalGiven(personId: Long): Flow<Long>
 
-    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM ledger_entry WHERE personId = :personId AND type = 'GIVEN'")
+    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM ledger_entry WHERE personId = :personId AND type = 'GIVEN' AND isDeleted = 0")
     suspend fun getTotalGiven(personId: Long): Long
 
-    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM ledger_entry WHERE personId = :personId AND type = 'GIVEN_BACK'")
+    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM ledger_entry WHERE personId = :personId AND type = 'GIVEN_BACK' AND isDeleted = 0")
     fun observeTotalGivenBack(personId: Long): Flow<Long>
 
-    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM ledger_entry WHERE personId = :personId AND type = 'GIVEN_BACK'")
+    @Query("SELECT COALESCE(SUM(amountPaise), 0) FROM ledger_entry WHERE personId = :personId AND type = 'GIVEN_BACK' AND isDeleted = 0")
     suspend fun getTotalGivenBack(personId: Long): Long
 
     @Query("""
         SELECT COALESCE(SUM(l.amountPaise), 0)
         FROM ledger_entry l
         INNER JOIN person p ON l.personId = p.id
-        WHERE p.isDeleted = 0 AND p.isHidden = 0 AND l.type = 'GIVEN'
+        WHERE p.isDeleted = 0 AND p.isHidden = 0 AND l.isDeleted = 0 AND l.type = 'GIVEN'
     """)
     fun observeGlobalTotalGiven(): Flow<Long>
 
@@ -83,7 +92,7 @@ interface LedgerEntryDao {
         SELECT COALESCE(SUM(l.amountPaise), 0)
         FROM ledger_entry l
         INNER JOIN person p ON l.personId = p.id
-        WHERE p.isDeleted = 0 AND p.isHidden = 0 AND l.type = 'GIVEN_BACK'
+        WHERE p.isDeleted = 0 AND p.isHidden = 0 AND l.isDeleted = 0 AND l.type = 'GIVEN_BACK'
     """)
     fun observeGlobalTotalGivenBack(): Flow<Long>
 
@@ -92,6 +101,7 @@ interface LedgerEntryDao {
             personId,
             COALESCE(SUM(CASE WHEN type = 'GIVEN' THEN amountPaise ELSE -amountPaise END), 0) AS outstandingBalancePaise
         FROM ledger_entry
+        WHERE isDeleted = 0
         GROUP BY personId
     """)
     fun observeAllPersonBalances(): Flow<List<PersonBalance>>

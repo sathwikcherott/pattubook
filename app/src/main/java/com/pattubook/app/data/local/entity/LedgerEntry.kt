@@ -26,7 +26,8 @@ data class LedgerEntry(
     val amountPaise: Long,
     val type: LedgerEntryType,
     val timestamp: Long = System.currentTimeMillis(),
-    val note: String? = null
+    val note: String? = null,
+    val isDeleted: Boolean = false,
 ) {
     init {
         require(amountPaise >= 0) { "amountPaise must be non-negative" }

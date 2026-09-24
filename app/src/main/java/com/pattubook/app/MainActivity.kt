@@ -340,6 +340,12 @@ class MainActivity : FragmentActivity() {
                                 onPermanentlyDeletePerson = { person ->
                                     peopleViewModel.permanentlyDeletePerson(person)
                                 },
+                                onRestoreEntry = { entry ->
+                                    peopleViewModel.restoreDeletedEntry(entry)
+                                },
+                                onPermanentlyDeleteEntry = { entry ->
+                                    peopleViewModel.permanentlyDeleteEntry(entry)
+                                },
                                 onEmptyRecycleBin = {
                                     peopleViewModel.emptyRecycleBin()
                                 }

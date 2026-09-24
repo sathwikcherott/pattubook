@@ -252,6 +252,9 @@ class PattubookRepository(
     fun observeEntriesForPerson(personId: Long): Flow<List<LedgerEntry>> =
         ledgerEntryDao.observeEntriesForPerson(personId)
 
+    fun observeDeletedEntries(): Flow<List<LedgerEntry>> =
+        ledgerEntryDao.observeDeletedEntries()
+
     fun observeGivenEntriesForPerson(personId: Long): Flow<List<LedgerEntry>> =
         ledgerEntryDao.observeGivenEntriesForPerson(personId)
 
@@ -290,13 +293,35 @@ class PattubookRepository(
         }
     }
 
-    suspend fun deleteEntry(entry: LedgerEntry): Result<Unit> {
+    suspend fun softDeleteEntry(entryId: Long): Result<Unit> {
         return try {
-            ledgerEntryDao.deleteEntry(entry)
+            ledgerEntryDao.setEntryDeleted(entryId, true)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    suspend fun restoreDeletedEntry(entryId: Long): Result<Unit> {
+        return try {
+            ledgerEntryDao.setEntryDeleted(entryId, false)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun permanentlyDeleteEntry(entryId: Long): Result<Unit> {
+        return try {
+            ledgerEntryDao.permanentlyDeleteEntry(entryId)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteEntry(entry: LedgerEntry): Result<Unit> {
+        return softDeleteEntry(entry.id)
     }
 
     // --- Persistent Undo & Redo Operations ---
@@ -333,7 +358,7 @@ class PattubookRepository(
             if (latestEntry == null) {
                 Result.failure(NoSuchElementException("No transaction available to undo."))
             } else {
-                ledgerEntryDao.deleteEntry(latestEntry)
+                ledgerEntryDao.setEntryDeleted(latestEntry.id, true)
                 Result.success(latestEntry)
             }
         }
@@ -350,7 +375,7 @@ class PattubookRepository(
     }
 
     /**
-     * Re-inserts a previously undone LedgerEntry exactly as it was.
+     * Re-inserts or un-deletes a previously undone LedgerEntry exactly as it was.
      */
     suspend fun restoreUndoneEntry(entry: LedgerEntry): Result<Long> {
         val insertOp: suspend () -> Result<Long> = {
@@ -358,8 +383,8 @@ class PattubookRepository(
             if (!personExists) {
                 Result.failure(IllegalArgumentException("Cannot redo transaction: Person no longer exists."))
             } else {
-                val id = ledgerEntryDao.insertEntry(entry)
-                Result.success(id)
+                ledgerEntryDao.setEntryDeleted(entry.id, false)
+                Result.success(entry.id)
             }
         }
         return try {
@@ -429,6 +454,7 @@ class PattubookRepository(
                 entryObj.put("amountPaise", entry.amountPaise)
                 entryObj.put("type", entry.type.name)
                 entryObj.put("timestamp", entry.timestamp)
+                entryObj.put("isDeleted", entry.isDeleted)
                 if (entry.note != null) {
                     entryObj.put("note", entry.note)
                 } else {
@@ -532,6 +558,7 @@ class PattubookRepository(
                     val amountPaise = eObj.getLong("amountPaise")
                     val typeStr = eObj.getString("type")
                     val timestamp = eObj.getLong("timestamp")
+                    val isDeleted = eObj.optBoolean("isDeleted", false)
                     val note = if (eObj.isNull("note")) null else eObj.optString("note").trim().ifEmpty { null }
 
                     if (!personIdsSet.contains(personId)) {
@@ -559,7 +586,8 @@ class PattubookRepository(
                             amountPaise = amountPaise,
                             type = type,
                             timestamp = timestamp,
-                            note = note
+                            note = note,
+                            isDeleted = isDeleted,
                         )
                     )
                 }
