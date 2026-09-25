@@ -50,6 +50,7 @@ import com.pattubook.app.data.local.entity.LedgerEntry
 import com.pattubook.app.data.local.entity.LedgerEntryType
 import com.pattubook.app.data.local.entity.Person
 import com.pattubook.app.ui.components.AddTransactionDialog
+import com.pattubook.app.ui.components.DeleteTransactionDialog
 import com.pattubook.app.ui.components.EditTransactionDialog
 import com.pattubook.app.ui.components.PattubookQuickActions
 import com.pattubook.app.ui.components.SwipeableTransactionRow
@@ -77,16 +78,34 @@ fun PersonDetailScreen(
     onRecordReturnConfirm: (amountPaise: Long, note: String?, timestamp: Long) -> Unit,
     onUndoClick: () -> Unit,
     modifier: Modifier = Modifier,
-    onDeleteTransactionSwipe: (LedgerEntry) -> Unit = {},
+    onArchiveTransactionSwipe: (LedgerEntry) -> Unit = {},
+    onDeleteTransactionConfirm: (LedgerEntry) -> Unit = {},
     onEditTransactionConfirm: (LedgerEntry) -> Unit = {},
     onRedoClick: () -> Unit = {},
     eventFlow: Flow<PersonDetailUiEvent>? = null,
 ) {
     var activeTransactionType by remember { mutableStateOf<LedgerEntryType?>(null) }
     var entryToEdit by remember { mutableStateOf<LedgerEntry?>(null) }
+    var entryToDelete by remember { mutableStateOf<LedgerEntry?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+
+    val (activeTransactions, archivedTransactions) = remember(uiState.transactions) {
+        val active = uiState.transactions
+            .filter { !it.isArchived }
+            .sortedWith(
+                compareBy<LedgerEntry> { if (it.type == LedgerEntryType.GIVEN) "Money Given" else "Money Returned" }
+                    .thenByDescending { it.timestamp }
+            )
+        val archived = uiState.transactions
+            .filter { it.isArchived }
+            .sortedWith(
+                compareBy<LedgerEntry> { if (it.type == LedgerEntryType.GIVEN) "Money Given" else "Money Returned" }
+                    .thenByDescending { it.timestamp }
+            )
+        active to archived
+    }
 
     LaunchedEffect(uiState) {
         if (!uiState.isLoading && uiState.person == null) {
@@ -126,9 +145,44 @@ fun PersonDetailScreen(
                         }
                     }
                 }
+                is PersonDetailUiEvent.EntryArchived -> {
+                    coroutineScope.launch {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "Transaction archived",
+                            actionLabel = "Undo",
+                            duration = SnackbarDuration.Short
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            onRedoClick()
+                        }
+                    }
+                }
+                is PersonDetailUiEvent.EntryUnarchived -> {
+                    coroutineScope.launch {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "Transaction restored",
+                            actionLabel = "Undo",
+                            duration = SnackbarDuration.Short
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            onRedoClick()
+                        }
+                    }
+                }
                 else -> {}
             }
         }
+    }
+
+    entryToDelete?.let { entry ->
+        DeleteTransactionDialog(
+            entry = entry,
+            onDismiss = { entryToDelete = null },
+            onConfirmDelete = {
+                entryToDelete = null
+                onDeleteTransactionConfirm(entry)
+            }
+        )
     }
 
     entryToEdit?.let { entry ->
@@ -340,7 +394,7 @@ fun PersonDetailScreen(
                     fontWeight = FontWeight.Bold
                 )
 
-                if (uiState.transactions.isNotEmpty()) {
+                if (activeTransactions.isNotEmpty()) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
@@ -348,7 +402,7 @@ fun PersonDetailScreen(
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "${uiState.transactions.size} entries",
+                            text = "${activeTransactions.size} active",
                             style = MaterialTheme.typography.labelSmall,
                             color = AccentGreen,
                             fontWeight = FontWeight.SemiBold
@@ -405,15 +459,42 @@ fun PersonDetailScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = PaddingValues(bottom = 20.dp)
                     ) {
+                        // Active Transactions
                         items(
-                            items = uiState.transactions,
+                            items = activeTransactions,
                             key = { entry -> entry.id }
                         ) { entry ->
                             SwipeableTransactionRow(
                                 entry = entry,
-                                onDeleteSwipe = onDeleteTransactionSwipe,
-                                onEditClick = { entryToEdit = entry }
+                                onArchiveSwipe = onArchiveTransactionSwipe,
+                                onEditClick = { entryToEdit = entry },
+                                onDeleteClick = { entryToDelete = entry }
                             )
+                        }
+
+                        // Archived Transactions Section
+                        if (archivedTransactions.isNotEmpty()) {
+                            item {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "ARCHIVED TRANSACTIONS (${archivedTransactions.size})",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = TextSecondary,
+                                    letterSpacing = 1.2.sp
+                                )
+                            }
+
+                            items(
+                                items = archivedTransactions,
+                                key = { entry -> entry.id }
+                            ) { entry ->
+                                SwipeableTransactionRow(
+                                    entry = entry,
+                                    onArchiveSwipe = onArchiveTransactionSwipe,
+                                    onEditClick = { entryToEdit = entry },
+                                    onDeleteClick = { entryToDelete = entry }
+                                )
+                            }
                         }
                     }
                 }
@@ -431,25 +512,26 @@ fun PersonDetailScreenPreview() {
             LedgerEntry(
                 id = 1,
                 personId = 1,
-                amountPaise = 500000L,
+                amountPaise = 900000L,
                 type = LedgerEntryType.GIVEN,
                 note = "Business loan"
             ),
             LedgerEntry(
                 id = 2,
                 personId = 1,
-                amountPaise = 200000L,
+                amountPaise = 80000L,
                 type = LedgerEntryType.GIVEN_BACK,
-                note = "Partial repayment"
+                note = "Partial repayment",
+                isArchived = true
             )
         )
         PersonDetailScreen(
             uiState = PersonDetailUiState(
                 person = samplePerson,
                 transactions = sampleTransactions,
-                totalGivenPaise = 500000L,
-                totalGivenBackPaise = 200000L,
-                outstandingBalancePaise = 300000L,
+                totalGivenPaise = 900000L,
+                totalGivenBackPaise = 0L,
+                outstandingBalancePaise = 900000L,
                 isLoading = false
             ),
             onBackClick = {},

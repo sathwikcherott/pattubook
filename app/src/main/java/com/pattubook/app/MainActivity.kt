@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -17,10 +18,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -53,6 +54,7 @@ class MainActivity : FragmentActivity() {
             personDao = database.personDao(),
             ledgerEntryDao = database.ledgerEntryDao(),
             database = database,
+            context = applicationContext,
         )
         val peopleViewModelFactory = PeopleViewModel.Factory(repository)
 
@@ -109,6 +111,16 @@ class MainActivity : FragmentActivity() {
 
                     var lastBackPressTime by remember { mutableLongStateOf(0L) }
                     val isAtHome = currentRoute == "home"
+
+                    val intentData = intent?.data
+                    LaunchedEffect(intentData) {
+                        if (intentData != null && intentData.scheme == "pattubook" && intentData.host == "person_detail") {
+                            val personId = intentData.lastPathSegment?.toLongOrNull()
+                            if (personId != null) {
+                                navController.navigate("person_detail/$personId")
+                            }
+                        }
+                    }
 
                     BackHandler(enabled = isAtHome) {
                         val currentTime = System.currentTimeMillis()
@@ -221,7 +233,14 @@ class MainActivity : FragmentActivity() {
                                 onRedoClick = {
                                     detailViewModel.redoLastUndoneEntry()
                                 },
-                                onDeleteTransactionSwipe = { entry ->
+                                onArchiveTransactionSwipe = { entry ->
+                                    if (entry.isArchived) {
+                                        detailViewModel.unarchiveEntry(entry)
+                                    } else {
+                                        detailViewModel.archiveEntry(entry)
+                                    }
+                                },
+                                onDeleteTransactionConfirm = { entry ->
                                     detailViewModel.deleteEntry(entry)
                                 },
                                 onEditTransactionConfirm = { updatedEntry ->

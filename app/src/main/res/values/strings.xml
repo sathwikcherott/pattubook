@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">pattubook</string>
+    <string name="app_name">Pattubook</string>
+    <string name="widget_description">Quick overview of active contacts and outstanding balances</string>
+    <string name="widget_loading">Loading lending ledger&#8230;</string>
 </resources>

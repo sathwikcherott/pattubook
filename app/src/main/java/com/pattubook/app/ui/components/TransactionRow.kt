@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -39,6 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -67,14 +69,18 @@ import kotlin.math.abs
 @Composable
 fun SwipeableTransactionRow(
     entry: LedgerEntry,
-    onDeleteSwipe: (LedgerEntry) -> Unit,
+    onArchiveSwipe: (LedgerEntry) -> Unit,
     onEditClick: (LedgerEntry) -> Unit,
+    onDeleteClick: (LedgerEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
     var rowWidthPx by remember { mutableFloatStateOf(0f) }
     val offsetX = remember { Animatable(0f) }
     val cardShape = RoundedCornerShape(18.dp)
+
+    val archiveText = if (entry.isArchived) "Unarchive" else "Archive"
+    val archiveIcon = if (entry.isArchived) Icons.Default.Refresh else Icons.Default.Info
 
     Box(
         modifier = modifier
@@ -83,33 +89,36 @@ fun SwipeableTransactionRow(
                 rowWidthPx = size.width.toFloat()
             }
     ) {
-        // Red Delete Area Background
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clip(cardShape)
-                .background(AccentRed)
-                .padding(horizontal = 20.dp),
-            contentAlignment = Alignment.CenterEnd
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "Delete",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onError,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete Transaction",
-                    tint = MaterialTheme.colorScheme.onError,
-                    modifier = Modifier.size(20.dp)
-                )
+        // Background Actions Layer (Shown for both left and right swipes)
+        if (offsetX.value != 0f) {
+            val contentAlignment = if (offsetX.value < 0f) Alignment.CenterEnd else Alignment.CenterStart
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(cardShape)
+                    .background(AccentBlue)
+                    .padding(horizontal = 20.dp),
+                contentAlignment = contentAlignment
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = archiveIcon,
+                        contentDescription = archiveText,
+                        tint = TextPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = archiveText,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
 
-        // Foreground Transaction Row with Drag Gestures
+        // Foreground Transaction Row
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -121,22 +130,25 @@ fun SwipeableTransactionRow(
                     detectHorizontalDragGestures(
                         onHorizontalDrag = { change, dragAmount ->
                             change.consume()
-                            val newOffset = (offsetX.value + dragAmount).coerceIn(-rowWidthPx, 0f)
+                            val newOffset = (offsetX.value + dragAmount).coerceIn(-rowWidthPx, rowWidthPx)
                             coroutineScope.launch {
                                 offsetX.snapTo(newOffset)
                             }
                         },
                         onDragEnd = {
-                            val currentOffset = abs(offsetX.value)
-                            val swipeProgress = if (rowWidthPx > 0f) currentOffset / rowWidthPx else 0f
+                            val currentOffset = offsetX.value
+                            val absOffset = abs(currentOffset)
+                            val swipeProgress = if (rowWidthPx > 0f) absOffset / rowWidthPx else 0f
+
                             if (swipeProgress > 0.70f) {
-                                // STRICTLY > 70%: Animate off-screen and delete!
+                                // SWIPE IN EITHER DIRECTION > 70%: Archive or Unarchive!
+                                val targetX = if (currentOffset < 0f) -rowWidthPx else rowWidthPx
                                 coroutineScope.launch {
-                                    offsetX.animateTo(-rowWidthPx, animationSpec = tween(150))
-                                    onDeleteSwipe(entry)
+                                    offsetX.animateTo(targetX, animationSpec = tween(150))
+                                    onArchiveSwipe(entry)
                                 }
                             } else {
-                                // <= 70%: Animate back to resting position!
+                                // <= 70%: Restore to resting position
                                 coroutineScope.launch {
                                     offsetX.animateTo(0f, animationSpec = spring())
                                 }
@@ -152,7 +164,8 @@ fun SwipeableTransactionRow(
         ) {
             TransactionRow(
                 entry = entry,
-                onEditClick = onEditClick
+                onEditClick = onEditClick,
+                onDeleteClick = onDeleteClick
             )
         }
     }
@@ -164,6 +177,7 @@ fun TransactionRow(
     entry: LedgerEntry,
     modifier: Modifier = Modifier,
     onEditClick: (LedgerEntry) -> Unit = {},
+    onDeleteClick: (LedgerEntry) -> Unit = {},
 ) {
     val cardShape = RoundedCornerShape(18.dp)
     val isGiven = entry.type == LedgerEntryType.GIVEN
@@ -173,11 +187,13 @@ fun TransactionRow(
     val typeTitle = if (isGiven) "Money Given" else "Money Returned"
 
     var dropdownExpanded by remember { mutableStateOf(false) }
+    val cardAlpha = if (entry.isArchived) 0.65f else 1.0f
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(cardShape)
+            .alpha(cardAlpha)
             .background(DarkSurface)
             .border(1.dp, BorderSubtle, cardShape)
             .combinedClickable(
@@ -229,12 +245,23 @@ fun TransactionRow(
                     }
                 }
 
-                Text(
-                    text = CurrencyFormatter.formatPaiseToRupees(entry.amountPaise),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = accentColor,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = CurrencyFormatter.formatPaiseToRupees(entry.amountPaise),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = accentColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (entry.isArchived) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "✓",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = TextSecondary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
 
             entry.note?.takeIf { it.isNotBlank() }?.let { note ->
@@ -284,6 +311,30 @@ fun TransactionRow(
                     onEditClick(entry)
                 }
             )
+
+            DropdownMenuItem(
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Transaction",
+                            tint = AccentRed,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Delete",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = AccentRed,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                },
+                onClick = {
+                    dropdownExpanded = false
+                    onDeleteClick(entry)
+                }
+            )
         }
     }
 }
@@ -311,7 +362,8 @@ fun TransactionRowPreview() {
                     personId = 1,
                     amountPaise = 20000L,
                     type = LedgerEntryType.GIVEN_BACK,
-                    note = null
+                    note = null,
+                    isArchived = true
                 )
             )
         }

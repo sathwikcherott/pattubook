@@ -9,6 +9,7 @@ import com.pattubook.app.data.local.dao.PersonDao
 import com.pattubook.app.data.local.entity.LedgerEntry
 import com.pattubook.app.data.local.entity.LedgerEntryType
 import com.pattubook.app.data.local.entity.Person
+import com.pattubook.app.widget.PattubookWidgetUpdater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -26,7 +27,12 @@ class PattubookRepository(
     private val personDao: PersonDao,
     private val ledgerEntryDao: LedgerEntryDao,
     private val database: PattubookDatabase? = null,
+    private val context: Context? = null,
 ) {
+
+    private suspend fun notifyWidgetUpdate() {
+        context?.let { PattubookWidgetUpdater.updateWidget(it) }
+    }
 
     // --- Person Operations ---
 
@@ -50,6 +56,7 @@ class PattubookRepository(
         )
         return try {
             val id = personDao.insertPerson(person)
+            notifyWidgetUpdate()
             Result.success(id)
         } catch (e: Exception) {
             Result.failure(e)
@@ -65,6 +72,7 @@ class PattubookRepository(
         val updatedPerson = person.copy(name = trimmedName)
         return try {
             personDao.updatePerson(updatedPerson)
+            notifyWidgetUpdate()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -74,6 +82,7 @@ class PattubookRepository(
     suspend fun setPersonHidden(personId: Long, isHidden: Boolean): Result<Unit> {
         return try {
             personDao.setPersonHidden(personId, isHidden)
+            notifyWidgetUpdate()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -83,6 +92,7 @@ class PattubookRepository(
     suspend fun movePersonToRecycleBin(personId: Long): Result<Unit> {
         return try {
             personDao.setPersonDeleted(personId, true)
+            notifyWidgetUpdate()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -92,6 +102,7 @@ class PattubookRepository(
     suspend fun restorePerson(personId: Long): Result<Unit> {
         return try {
             personDao.setPersonDeleted(personId, false)
+            notifyWidgetUpdate()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -102,6 +113,7 @@ class PattubookRepository(
         val deleteOp: suspend () -> Result<Unit> = {
             ledgerEntryDao.deleteEntriesForPerson(person.id)
             personDao.deletePerson(person)
+            notifyWidgetUpdate()
             Result.success(Unit)
         }
         return try {
@@ -119,6 +131,7 @@ class PattubookRepository(
         val emptyOp: suspend () -> Result<Unit> = {
             ledgerEntryDao.emptyRecycleBinEntries()
             personDao.emptyRecycleBinPeople()
+            notifyWidgetUpdate()
             Result.success(Unit)
         }
         return try {
@@ -194,6 +207,7 @@ class PattubookRepository(
                     note = sanitizedNote
                 )
                 val id = ledgerEntryDao.insertEntry(entry)
+                notifyWidgetUpdate()
                 Result.success(id)
             }
         }
@@ -278,6 +292,7 @@ class PattubookRepository(
                 Result.failure(IllegalArgumentException("Person with ID ${updatedEntry.personId} does not exist."))
             } else {
                 ledgerEntryDao.updateEntry(updatedEntry)
+                notifyWidgetUpdate()
                 Result.success(Unit)
             }
         }
@@ -293,9 +308,20 @@ class PattubookRepository(
         }
     }
 
+    suspend fun setEntryArchived(entryId: Long, isArchived: Boolean): Result<Unit> {
+        return try {
+            ledgerEntryDao.setEntryArchived(entryId, isArchived)
+            notifyWidgetUpdate()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun softDeleteEntry(entryId: Long): Result<Unit> {
         return try {
             ledgerEntryDao.setEntryDeleted(entryId, true)
+            notifyWidgetUpdate()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -305,6 +331,7 @@ class PattubookRepository(
     suspend fun restoreDeletedEntry(entryId: Long): Result<Unit> {
         return try {
             ledgerEntryDao.setEntryDeleted(entryId, false)
+            notifyWidgetUpdate()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -314,6 +341,7 @@ class PattubookRepository(
     suspend fun permanentlyDeleteEntry(entryId: Long): Result<Unit> {
         return try {
             ledgerEntryDao.permanentlyDeleteEntry(entryId)
+            notifyWidgetUpdate()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -359,6 +387,7 @@ class PattubookRepository(
                 Result.failure(NoSuchElementException("No transaction available to undo."))
             } else {
                 ledgerEntryDao.setEntryDeleted(latestEntry.id, true)
+                notifyWidgetUpdate()
                 Result.success(latestEntry)
             }
         }
@@ -383,7 +412,9 @@ class PattubookRepository(
             if (!personExists) {
                 Result.failure(IllegalArgumentException("Cannot redo transaction: Person no longer exists."))
             } else {
-                ledgerEntryDao.setEntryDeleted(entry.id, false)
+                ledgerEntryDao.setEntryDeleted(entry.id, entry.isDeleted)
+                ledgerEntryDao.setEntryArchived(entry.id, entry.isArchived)
+                notifyWidgetUpdate()
                 Result.success(entry.id)
             }
         }
@@ -407,6 +438,7 @@ class PattubookRepository(
         val deleteOperation: suspend () -> Result<Unit> = {
             ledgerEntryDao.deleteAllEntries()
             personDao.deleteAllPeople()
+            notifyWidgetUpdate()
             Result.success(Unit)
         }
 
@@ -455,6 +487,7 @@ class PattubookRepository(
                 entryObj.put("type", entry.type.name)
                 entryObj.put("timestamp", entry.timestamp)
                 entryObj.put("isDeleted", entry.isDeleted)
+                entryObj.put("isArchived", entry.isArchived)
                 if (entry.note != null) {
                     entryObj.put("note", entry.note)
                 } else {
@@ -559,6 +592,7 @@ class PattubookRepository(
                     val typeStr = eObj.getString("type")
                     val timestamp = eObj.getLong("timestamp")
                     val isDeleted = eObj.optBoolean("isDeleted", false)
+                    val isArchived = eObj.optBoolean("isArchived", false)
                     val note = if (eObj.isNull("note")) null else eObj.optString("note").trim().ifEmpty { null }
 
                     if (!personIdsSet.contains(personId)) {
@@ -588,6 +622,7 @@ class PattubookRepository(
                             timestamp = timestamp,
                             note = note,
                             isDeleted = isDeleted,
+                            isArchived = isArchived,
                         )
                     )
                 }
@@ -598,6 +633,7 @@ class PattubookRepository(
                     personDao.deleteAllPeople()
                     personDao.insertPeople(parsedPeople)
                     ledgerEntryDao.insertEntries(parsedEntries)
+                    notifyWidgetUpdate()
                     Result.success(Unit)
                 }
 

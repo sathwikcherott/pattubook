@@ -20,5 +20,7 @@ sealed interface PersonDetailUiEvent {
     data object RedoSuccess : PersonDetailUiEvent
     data object EntryUpdated : PersonDetailUiEvent
     data class EntryDeleted(val entry: LedgerEntry) : PersonDetailUiEvent
+    data class EntryArchived(val entry: LedgerEntry) : PersonDetailUiEvent
+    data class EntryUnarchived(val entry: LedgerEntry) : PersonDetailUiEvent
     data class Error(val message: String) : PersonDetailUiEvent
 }

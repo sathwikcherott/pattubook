@@ -158,6 +158,36 @@ class PersonDetailViewModel(
         }
     }
 
+    fun archiveEntry(entry: LedgerEntry) {
+        lastUndoneEntry = entry.copy(isArchived = false)
+        viewModelScope.launch {
+            val result = repository.setEntryArchived(entry.id, true)
+            result.onSuccess {
+                _eventChannel.send(PersonDetailUiEvent.EntryArchived(entry))
+            }.onFailure { throwable ->
+                lastUndoneEntry = null
+                val userMsg = throwable.message ?: "Failed to archive transaction."
+                _errorMessage.value = userMsg
+                _eventChannel.send(PersonDetailUiEvent.Error(userMsg))
+            }
+        }
+    }
+
+    fun unarchiveEntry(entry: LedgerEntry) {
+        lastUndoneEntry = entry.copy(isArchived = true)
+        viewModelScope.launch {
+            val result = repository.setEntryArchived(entry.id, false)
+            result.onSuccess {
+                _eventChannel.send(PersonDetailUiEvent.EntryUnarchived(entry))
+            }.onFailure { throwable ->
+                lastUndoneEntry = null
+                val userMsg = throwable.message ?: "Failed to restore transaction."
+                _errorMessage.value = userMsg
+                _eventChannel.send(PersonDetailUiEvent.Error(userMsg))
+            }
+        }
+    }
+
     fun deleteEntry(entry: LedgerEntry) {
         lastUndoneEntry = entry
         viewModelScope.launch {
