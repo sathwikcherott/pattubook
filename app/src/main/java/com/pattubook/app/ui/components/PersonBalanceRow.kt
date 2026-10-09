@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
@@ -34,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -51,6 +53,8 @@ import com.pattubook.app.ui.theme.TextMuted
 import com.pattubook.app.ui.theme.TextPrimary
 import com.pattubook.app.ui.theme.TextSecondary
 import com.pattubook.app.ui.util.CurrencyFormatter
+import com.pattubook.app.ui.util.DateFormatter
+import kotlin.math.absoluteValue
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -59,12 +63,13 @@ fun PersonBalanceRow(
     outstandingBalancePaise: Long,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    latestActivityTimestamp: Long? = null,
     onHideClick: () -> Unit = {},
     onUnhideClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {},
 ) {
     val cardShape = RoundedCornerShape(18.dp)
-    val initialLetter = person.name.trim().take(1).uppercase()
+    val initialLetter = person.name.trim().take(1).uppercase().ifEmpty { "?" }
     var dropdownExpanded by remember { mutableStateOf(false) }
 
     val (statusLabel, statusColor, statusContainer) = when {
@@ -74,19 +79,28 @@ fun PersonBalanceRow(
     }
 
     val alphaAmount = if (person.isHidden) 0.65f else 1.0f
+    val activityLabel = latestActivityTimestamp?.let(DateFormatter::formatRelativeUpdate) ?: "No activity yet"
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(cardShape)
             .alpha(alphaAmount)
-            .background(DarkSurface)
+            .background(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        statusContainer.copy(alpha = 0.32f),
+                        DarkSurface,
+                        DarkSurface,
+                    )
+                )
+            )
             .border(1.dp, BorderSubtle, cardShape)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = { dropdownExpanded = true }
             )
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -97,13 +111,12 @@ fun PersonBalanceRow(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.weight(1f)
             ) {
-                // Initial Avatar Circle
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(48.dp)
                         .clip(CircleShape)
                         .background(statusContainer)
-                        .border(1.dp, statusColor.copy(alpha = 0.3f), CircleShape),
+                        .border(1.dp, statusColor.copy(alpha = 0.35f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -116,7 +129,7 @@ fun PersonBalanceRow(
 
                 Spacer(modifier = Modifier.width(14.dp))
 
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = person.name,
@@ -142,45 +155,65 @@ fun PersonBalanceRow(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(statusContainer)
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(statusContainer)
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = statusLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = statusColor,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = statusLabel,
+                            text = activityLabel,
                             style = MaterialTheme.typography.labelSmall,
-                            color = statusColor,
-                            fontWeight = FontWeight.Medium
+                            color = TextSecondary,
+                            maxLines = 1,
                         )
                     }
                 }
             }
 
-            // Balance Display
-            val (balanceColor, balanceText) = when {
-                outstandingBalancePaise > 0 ->
-                    AccentGreen to CurrencyFormatter.formatPaiseToRupees(outstandingBalancePaise)
+            Spacer(modifier = Modifier.width(8.dp))
 
-                outstandingBalancePaise < 0 ->
-                    AccentBlue to CurrencyFormatter.formatPaiseToRupees(outstandingBalancePaise)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(horizontalAlignment = Alignment.End) {
+                    val (balanceColor, balanceText) = when {
+                        outstandingBalancePaise > 0 ->
+                            AccentGreen to CurrencyFormatter.formatPaiseToRupees(outstandingBalancePaise)
 
-                else ->
-                    TextMuted to "Settled"
+                        outstandingBalancePaise < 0 ->
+                            AccentBlue to CurrencyFormatter.formatPaiseToRupees(outstandingBalancePaise.absoluteValue)
+
+                        else ->
+                            TextMuted to "Settled"
+                    }
+
+                    Text(
+                        text = balanceText,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = balanceColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = TextMuted,
+                    modifier = Modifier.size(18.dp)
+                )
             }
-
-            Text(
-                text = balanceText,
-                style = MaterialTheme.typography.titleMedium,
-                color = balanceColor,
-                fontWeight = FontWeight.Bold
-            )
         }
 
-        // Long-Press Contextual Action Menu
         DropdownMenu(
             expanded = dropdownExpanded,
             onDismissRequest = { dropdownExpanded = false },
@@ -274,6 +307,7 @@ fun PersonBalanceRowPreview() {
             PersonBalanceRow(
                 person = Person(id = 1, name = "Jai"),
                 outstandingBalancePaise = 245000L,
+                latestActivityTimestamp = System.currentTimeMillis(),
                 onClick = {}
             )
             PersonBalanceRow(

@@ -112,7 +112,7 @@ fun MoreScreen(
         containerColor = DarkBackground,
         bottomBar = {
             PattubookBottomBar(
-                currentDestination = NavDestination.MORE,
+                currentDestination = NavDestination.SETTINGS,
                 onDestinationSelected = onDestinationSelected
             )
         }
@@ -127,12 +127,13 @@ fun MoreScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "More",
+                text = "Settings",
                 style = MaterialTheme.typography.displayMedium,
-                color = TextPrimary
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold
             )
             Text(
-                text = "App settings & privacy overview",
+                text = "App settings, security & data management",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary
             )

@@ -34,6 +34,7 @@ class PeopleViewModel(
         repository.observeAllPeople(),
         repository.observeDeletedPeople(),
         repository.observeDeletedEntries(),
+        repository.observeAllActiveEntries(),
         repository.observeAllPersonBalances(),
         repository.observeGlobalTotalGiven(),
         repository.observeGlobalTotalGivenBack(),
@@ -46,15 +47,18 @@ class PeopleViewModel(
         @Suppress("UNCHECKED_CAST")
         val deletedEntries = flows[2] as List<LedgerEntry>
         @Suppress("UNCHECKED_CAST")
-        val balancesMap = flows[3] as Map<Long, Long>
-        val totalGiven = flows[4] as Long
-        val totalGivenBack = flows[5] as Long
-        val totalOutstanding = flows[6] as Long
+        val activeEntries = flows[3] as List<LedgerEntry>
+        @Suppress("UNCHECKED_CAST")
+        val balancesMap = flows[4] as Map<Long, Long>
+        val totalGiven = flows[5] as Long
+        val totalGivenBack = flows[6] as Long
+        val totalOutstanding = flows[7] as Long
 
         PeopleUiState(
             people = people,
             deletedPeople = deletedPeople,
             deletedEntries = deletedEntries,
+            activeEntries = activeEntries,
             outstandingBalancePaiseByPerson = balancesMap,
             totalGivenPaise = totalGiven,
             totalGivenBackPaise = totalGivenBack,
@@ -68,6 +72,7 @@ class PeopleViewModel(
                 people = emptyList(),
                 deletedPeople = emptyList(),
                 deletedEntries = emptyList(),
+                activeEntries = emptyList(),
                 outstandingBalancePaiseByPerson = emptyMap(),
                 totalGivenPaise = 0L,
                 totalGivenBackPaise = 0L,

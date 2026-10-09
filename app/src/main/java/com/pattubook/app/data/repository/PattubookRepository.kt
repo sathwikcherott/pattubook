@@ -269,6 +269,9 @@ class PattubookRepository(
     fun observeDeletedEntries(): Flow<List<LedgerEntry>> =
         ledgerEntryDao.observeDeletedEntries()
 
+    fun observeAllActiveEntries(): Flow<List<LedgerEntry>> =
+        ledgerEntryDao.observeAllActiveEntries()
+
     fun observeGivenEntriesForPerson(personId: Long): Flow<List<LedgerEntry>> =
         ledgerEntryDao.observeGivenEntriesForPerson(personId)
 

@@ -17,6 +17,15 @@ interface LedgerEntryDao {
     @Query("SELECT * FROM ledger_entry WHERE isDeleted = 1 ORDER BY timestamp DESC")
     fun observeDeletedEntries(): Flow<List<LedgerEntry>>
 
+    @Query("""
+        SELECT l.*
+        FROM ledger_entry l
+        INNER JOIN person p ON l.personId = p.id
+        WHERE l.isDeleted = 0 AND p.isDeleted = 0
+        ORDER BY l.timestamp DESC, l.id DESC
+    """)
+    fun observeAllActiveEntries(): Flow<List<LedgerEntry>>
+
     @Query("SELECT * FROM ledger_entry WHERE personId = :personId AND type = 'GIVEN' AND isDeleted = 0 AND isArchived = 0 ORDER BY timestamp DESC")
     fun observeGivenEntriesForPerson(personId: Long): Flow<List<LedgerEntry>>
 

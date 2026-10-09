@@ -7,6 +7,7 @@ data class PeopleUiState(
     val people: List<Person> = emptyList(),
     val deletedPeople: List<Person> = emptyList(),
     val deletedEntries: List<LedgerEntry> = emptyList(),
+    val activeEntries: List<LedgerEntry> = emptyList(),
     val outstandingBalancePaiseByPerson: Map<Long, Long> = emptyMap(),
     val totalGivenPaise: Long = 0L,
     val totalGivenBackPaise: Long = 0L,

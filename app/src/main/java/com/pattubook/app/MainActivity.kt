@@ -31,6 +31,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.pattubook.app.data.local.PattubookDatabase
 import com.pattubook.app.data.repository.PattubookRepository
+import com.pattubook.app.ui.activity.ActivityScreen
 import com.pattubook.app.ui.breakdown.OutstandingBreakdownScreen
 import com.pattubook.app.ui.components.AppLockOverlay
 import com.pattubook.app.ui.components.NavDestination
@@ -132,6 +133,21 @@ class MainActivity : FragmentActivity() {
                         }
                     }
 
+                    val onTabSelected: (NavDestination) -> Unit = { destination ->
+                        val targetRoute = when (destination) {
+                            NavDestination.HOME -> "home"
+                            NavDestination.ACTIVITY -> "activity"
+                            NavDestination.SETTINGS -> "settings"
+                        }
+                        if (currentRoute != targetRoute) {
+                            navController.navigate(targetRoute) {
+                                popUpTo("home") { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    }
+
                     NavHost(
                         navController = navController,
                         startDestination = "home",
@@ -170,17 +186,102 @@ class MainActivity : FragmentActivity() {
                                 onBalanceCardClick = {
                                     navController.navigate("outstanding_breakdown")
                                 },
-                                onBottomNavSelected = { destination ->
-                                    when (destination) {
-                                        NavDestination.HOME -> {}
-                                        NavDestination.MORE -> {
-                                            navController.navigate("more") {
-                                                popUpTo("home") { saveState = true }
-                                                launchSingleTop = true
-                                                restoreState = true
+                                onBottomNavSelected = onTabSelected
+                            )
+                        }
+
+                        composable("activity") {
+                            val peopleViewModel: PeopleViewModel = viewModel(factory = peopleViewModelFactory)
+                            val uiState by peopleViewModel.uiState.collectAsState()
+
+                            ActivityScreen(
+                                uiState = uiState,
+                                onPersonClick = { personId ->
+                                    navController.navigate("person_detail/$personId")
+                                },
+                                onDestinationSelected = onTabSelected
+                            )
+                        }
+
+                        composable("settings") {
+                            val peopleViewModel: PeopleViewModel = viewModel(factory = peopleViewModelFactory)
+                            val coroutineScope = rememberCoroutineScope()
+
+                            MoreScreen(
+                                isAppLockEnabled = isAppLockEnabled,
+                                onAppLockToggle = { enable ->
+                                    if (enable) {
+                                        if (!appLockManager.canAuthenticate(context)) {
+                                            Toast.makeText(
+                                                context,
+                                                "Device authentication is not supported or enrolled on this device.",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                        } else {
+                                            appLockManager.authenticate(
+                                                activity = this@MainActivity,
+                                                title = "Enable App Lock",
+                                                subtitle = "Authenticate to turn on App Lock",
+                                                onSuccess = {
+                                                    appLockManager.setAppLockEnabled(true)
+                                                    isAppLockEnabled = true
+                                                    isUnlocked = true
+                                                    Toast.makeText(context, "App Lock enabled", Toast.LENGTH_SHORT).show()
+                                                },
+                                                onError = { msg ->
+                                                    Toast.makeText(context, "Failed to enable App Lock: $msg", Toast.LENGTH_SHORT).show()
+                                                }
+                                            )
+                                        }
+                                    } else {
+                                        appLockManager.authenticate(
+                                            activity = this@MainActivity,
+                                            title = "Disable App Lock",
+                                            subtitle = "Authenticate to turn off App Lock",
+                                            onSuccess = {
+                                                appLockManager.setAppLockEnabled(false)
+                                                isAppLockEnabled = false
+                                                isUnlocked = true
+                                                Toast.makeText(context, "App Lock disabled", Toast.LENGTH_SHORT).show()
+                                            },
+                                            onError = { msg ->
+                                                Toast.makeText(context, "Failed to disable App Lock: $msg", Toast.LENGTH_SHORT).show()
                                             }
+                                        )
+                                    }
+                                },
+                                onDestinationSelected = onTabSelected,
+                                onOpenRecycleBinClick = {
+                                    navController.navigate("recycle_bin")
+                                },
+                                onExportBackupToUri = { uri ->
+                                    coroutineScope.launch {
+                                        val jsonResult = repository.generateBackupJson()
+                                        jsonResult.onSuccess { json ->
+                                            val exportResult = repository.exportBackupToUri(context, uri, json)
+                                            exportResult.onSuccess {
+                                                Toast.makeText(context, "Backup saved successfully!", Toast.LENGTH_SHORT).show()
+                                            }.onFailure { e ->
+                                                Toast.makeText(context, e.message ?: "Failed to write backup file.", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }.onFailure { e ->
+                                            Toast.makeText(context, e.message ?: "Failed to generate backup.", Toast.LENGTH_SHORT).show()
                                         }
                                     }
+                                },
+                                onImportBackupFromUri = { uri ->
+                                    coroutineScope.launch {
+                                        val restoreResult = repository.restoreBackupFromUri(context, uri)
+                                        restoreResult.onSuccess {
+                                            Toast.makeText(context, "Data restored successfully!", Toast.LENGTH_SHORT).show()
+                                        }.onFailure { e ->
+                                            Toast.makeText(context, e.message ?: "Failed to restore backup.", Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                },
+                                onDeleteAllDataConfirm = {
+                                    peopleViewModel.deleteAllData()
+                                    Toast.makeText(context, "All data deleted", Toast.LENGTH_SHORT).show()
                                 }
                             )
                         }
@@ -247,100 +348,6 @@ class MainActivity : FragmentActivity() {
                                     detailViewModel.updateEntry(updatedEntry)
                                 },
                                 eventFlow = detailViewModel.eventFlow,
-                            )
-                        }
-
-                        composable("more") {
-                            val peopleViewModel: PeopleViewModel = viewModel(factory = peopleViewModelFactory)
-                            val coroutineScope = rememberCoroutineScope()
-
-                            MoreScreen(
-                                isAppLockEnabled = isAppLockEnabled,
-                                onAppLockToggle = { enable ->
-                                    if (enable) {
-                                        if (!appLockManager.canAuthenticate(context)) {
-                                            Toast.makeText(
-                                                context,
-                                                "Device authentication is not supported or enrolled on this device.",
-                                                Toast.LENGTH_LONG
-                                            ).show()
-                                        } else {
-                                            appLockManager.authenticate(
-                                                activity = this@MainActivity,
-                                                title = "Enable App Lock",
-                                                subtitle = "Authenticate to turn on App Lock",
-                                                onSuccess = {
-                                                    appLockManager.setAppLockEnabled(true)
-                                                    isAppLockEnabled = true
-                                                    isUnlocked = true
-                                                    Toast.makeText(context, "App Lock enabled", Toast.LENGTH_SHORT).show()
-                                                },
-                                                onError = { msg ->
-                                                    Toast.makeText(context, "Failed to enable App Lock: $msg", Toast.LENGTH_SHORT).show()
-                                                }
-                                            )
-                                        }
-                                    } else {
-                                        appLockManager.authenticate(
-                                            activity = this@MainActivity,
-                                            title = "Disable App Lock",
-                                            subtitle = "Authenticate to turn off App Lock",
-                                            onSuccess = {
-                                                appLockManager.setAppLockEnabled(false)
-                                                isAppLockEnabled = false
-                                                isUnlocked = true
-                                                Toast.makeText(context, "App Lock disabled", Toast.LENGTH_SHORT).show()
-                                            },
-                                            onError = { msg ->
-                                                Toast.makeText(context, "Failed to disable App Lock: $msg", Toast.LENGTH_SHORT).show()
-                                            }
-                                        )
-                                    }
-                                },
-                                onDestinationSelected = { destination ->
-                                    when (destination) {
-                                        NavDestination.HOME -> {
-                                            navController.navigate("home") {
-                                                popUpTo("home") { saveState = true }
-                                                launchSingleTop = true
-                                                restoreState = true
-                                            }
-                                        }
-                                        NavDestination.MORE -> {}
-                                    }
-                                },
-                                onOpenRecycleBinClick = {
-                                    navController.navigate("recycle_bin")
-                                },
-                                onExportBackupToUri = { uri ->
-                                    coroutineScope.launch {
-                                        val jsonResult = repository.generateBackupJson()
-                                        jsonResult.onSuccess { json ->
-                                            val exportResult = repository.exportBackupToUri(context, uri, json)
-                                            exportResult.onSuccess {
-                                                Toast.makeText(context, "Backup saved successfully!", Toast.LENGTH_SHORT).show()
-                                            }.onFailure { e ->
-                                                Toast.makeText(context, e.message ?: "Failed to write backup file.", Toast.LENGTH_SHORT).show()
-                                            }
-                                        }.onFailure { e ->
-                                            Toast.makeText(context, e.message ?: "Failed to generate backup.", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                },
-                                onImportBackupFromUri = { uri ->
-                                    coroutineScope.launch {
-                                        val restoreResult = repository.restoreBackupFromUri(context, uri)
-                                        restoreResult.onSuccess {
-                                            Toast.makeText(context, "Data restored successfully!", Toast.LENGTH_SHORT).show()
-                                        }.onFailure { e ->
-                                            Toast.makeText(context, e.message ?: "Failed to restore backup.", Toast.LENGTH_LONG).show()
-                                        }
-                                    }
-                                },
-                                onDeleteAllDataConfirm = {
-                                    peopleViewModel.deleteAllData()
-                                    Toast.makeText(context, "All data deleted", Toast.LENGTH_SHORT).show()
-                                }
                             )
                         }
 
