@@ -204,7 +204,6 @@ class MainActivity : FragmentActivity() {
                         }
 
                         composable("settings") {
-                            val peopleViewModel: PeopleViewModel = viewModel(factory = peopleViewModelFactory)
                             val coroutineScope = rememberCoroutineScope()
 
                             MoreScreen(
@@ -280,8 +279,19 @@ class MainActivity : FragmentActivity() {
                                     }
                                 },
                                 onDeleteAllDataConfirm = {
-                                    peopleViewModel.deleteAllData()
-                                    Toast.makeText(context, "All data deleted", Toast.LENGTH_SHORT).show()
+                                    coroutineScope.launch {
+                                        repository.deleteAllData()
+                                            .onSuccess {
+                                                Toast.makeText(context, "All data deleted", Toast.LENGTH_SHORT).show()
+                                            }
+                                            .onFailure { error ->
+                                                Toast.makeText(
+                                                    context,
+                                                    error.message ?: "Failed to delete all data.",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
+                                    }
                                 }
                             )
                         }

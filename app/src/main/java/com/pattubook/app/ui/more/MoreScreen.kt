@@ -25,12 +25,14 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -75,6 +77,7 @@ fun MoreScreen(
 ) {
     val scrollState = rememberScrollState()
     var showDeleteAllDialog by remember { mutableStateOf(false) }
+    var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
 
     if (showDeleteAllDialog) {
         DeleteAllDataDialog(
@@ -82,6 +85,34 @@ fun MoreScreen(
             onConfirmDelete = {
                 showDeleteAllDialog = false
                 onDeleteAllDataConfirm()
+            }
+        )
+    }
+
+    pendingRestoreUri?.let { uri ->
+        AlertDialog(
+            onDismissRequest = { pendingRestoreUri = null },
+            title = { Text("Replace current data?") },
+            text = {
+                Text(
+                    "Restoring this backup replaces all current people and transaction history. " +
+                        "This cannot be undone. Export your current data first if you may need it."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        pendingRestoreUri = null
+                        onImportBackupFromUri(uri)
+                    }
+                ) {
+                    Text("Restore and replace", color = AccentRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRestoreUri = null }) {
+                    Text("Cancel", color = TextSecondary)
+                }
             }
         )
     }
@@ -103,7 +134,7 @@ fun MoreScreen(
         contract = ActivityResultContracts.GetContent(),
     ) { uri ->
         if (uri != null) {
-            onImportBackupFromUri(uri)
+            pendingRestoreUri = uri
         }
     }
 

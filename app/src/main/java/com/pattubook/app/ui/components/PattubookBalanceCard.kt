@@ -182,7 +182,7 @@ fun PattubookBalanceCard(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = if (net > 0) "Overall owed to you" else if (net < 0) "Overall you owe" else "Balanced",
+                            text = if (net > 0) "Net owed to you" else if (net < 0) "Net you owe" else "Balanced",
                             style = MaterialTheme.typography.bodySmall,
                             color = TextSecondary
                         )
