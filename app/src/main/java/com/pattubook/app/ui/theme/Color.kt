@@ -18,7 +18,7 @@ val AccentBlueContainer = Color(0xFF0F2D3F)
 
 val TextPrimary = Color(0xFFF0F3F7)
 val TextSecondary = Color(0xFF8A93A0)
-val TextMuted = Color(0xFF5C6470)
+val TextMuted = Color(0xFF858F9C)
 
 val BorderSubtle = Color(0xFF242A36)
 val BorderHighlight = Color(0xFF323B4B)

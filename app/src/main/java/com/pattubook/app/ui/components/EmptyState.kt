@@ -49,6 +49,7 @@ fun EmptyState(
     description: String = "Track money you lend and receive, privately on this device.",
     actionLabel: String? = "Add Person",
     icon: ImageVector = Icons.Default.Person,
+    actionIcon: ImageVector = Icons.Default.Add,
 ) {
     val cardShape = RoundedCornerShape(20.dp)
 
@@ -111,7 +112,7 @@ fun EmptyState(
                     shape = RoundedCornerShape(14.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Add,
+                        imageVector = actionIcon,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )

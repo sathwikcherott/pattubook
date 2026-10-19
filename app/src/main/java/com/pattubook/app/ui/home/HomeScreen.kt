@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -84,9 +84,35 @@ import kotlin.math.absoluteValue
 
 enum class PeopleFilterOption(val label: String) {
     ALL("All active people"),
+    HIDDEN("Hidden people"),
     THEY_OWE_YOU("They owe you"),
     YOU_OWE_THEM("You owe them"),
     SETTLED("Settled"),
+}
+
+internal fun filterPeopleForHome(
+    people: List<Person>,
+    outstandingBalancePaiseByPerson: Map<Long, Long>,
+    searchQuery: String,
+    selectedFilter: PeopleFilterOption,
+): List<Person> {
+    val peopleInView = when (selectedFilter) {
+        PeopleFilterOption.HIDDEN -> people.filter { it.isHidden }
+        else -> people.filter { !it.isHidden }
+    }
+    val query = searchQuery.trim()
+
+    return peopleInView.filter { person ->
+        val balance = outstandingBalancePaiseByPerson[person.id] ?: 0L
+        val matchesFilter = when (selectedFilter) {
+            PeopleFilterOption.ALL, PeopleFilterOption.HIDDEN -> true
+            PeopleFilterOption.THEY_OWE_YOU -> balance > 0L
+            PeopleFilterOption.YOU_OWE_THEM -> balance < 0L
+            PeopleFilterOption.SETTLED -> balance == 0L
+        }
+        val matchesSearch = query.isEmpty() || person.name.contains(query, ignoreCase = true)
+        matchesFilter && matchesSearch
+    }
 }
 
 @Composable
@@ -125,18 +151,12 @@ fun HomeScreen(
         selectedFilter,
         uiState.outstandingBalancePaiseByPerson
     ) {
-        val query = searchQuery.trim()
-        uiState.people.filter { person ->
-            val balance = uiState.outstandingBalancePaiseByPerson[person.id] ?: 0L
-            val matchesFilter = when (selectedFilter) {
-                PeopleFilterOption.ALL -> true
-                PeopleFilterOption.THEY_OWE_YOU -> balance > 0L
-                PeopleFilterOption.YOU_OWE_THEM -> balance < 0L
-                PeopleFilterOption.SETTLED -> balance == 0L
-            }
-            val matchesSearch = query.isEmpty() || person.name.contains(query, ignoreCase = true)
-            matchesFilter && matchesSearch
-        }
+        filterPeopleForHome(
+            people = uiState.people,
+            outstandingBalancePaiseByPerson = uiState.outstandingBalancePaiseByPerson,
+            searchQuery = searchQuery,
+            selectedFilter = selectedFilter,
+        )
     }
 
     // Exact financial summary calculations
@@ -246,256 +266,260 @@ fun HomeScreen(
             )
         }
     ) { innerPadding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 20.dp)
+                .padding(innerPadding),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            // A. Top Header App Bar
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Pattubook",
-                        style = MaterialTheme.typography.displayMedium,
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold
+            item {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // A. Top Header App Bar
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Pattubook",
+                                style = MaterialTheme.typography.displayMedium,
+                                color = TextPrimary,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Personal Lending Ledger",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextSecondary
+                            )
+                        }
+
+                        AddPersonIconButton(
+                            onClick = { showAddPersonDialog = true }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    // B. Financial Summary
+                    PattubookBalanceCard(
+                        netBalancePaise = netBalancePaise,
+                        grossToCollectPaise = grossToCollectPaise,
+                        grossToPayPaise = grossToPayPaise,
+                        unsettledPeopleCount = unsettledPeopleCount,
+                        totalPeopleCount = activePeople.size,
+                        onClick = onBalanceCardClick,
                     )
-                    Text(
-                        text = "Personal Lending Ledger",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // C. Quick Actions
+                    PattubookQuickActions(
+                        onGiveMoneyClick = { activeTransactionType = LedgerEntryType.GIVEN },
+                        onRecordReturnClick = { activeTransactionType = LedgerEntryType.GIVEN_BACK },
                     )
-                }
 
-                AddPersonIconButton(
-                    onClick = { showAddPersonDialog = true }
-                )
-            }
+                    if (activePeople.isNotEmpty()) {
+                        val topPerson = remember(activePeople, uiState.outstandingBalancePaiseByPerson) {
+                            activePeople
+                                .filter { (uiState.outstandingBalancePaiseByPerson[it.id] ?: 0L) != 0L }
+                                .maxByOrNull { abs(uiState.outstandingBalancePaiseByPerson[it.id] ?: 0L) }
+                        }
+                        val topBalancePaise = topPerson?.let { uiState.outstandingBalancePaiseByPerson[it.id] ?: 0L } ?: 0L
 
-            Spacer(modifier = Modifier.height(18.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
+                        // D. Smart Insight
+                        SmartInsightCard(
+                            topPersonName = topPerson?.name,
+                            topBalancePaise = topBalancePaise,
+                            unsettledCount = unsettledPeopleCount,
+                        )
+                    }
 
-            // B. Financial Summary
-            PattubookBalanceCard(
-                netBalancePaise = netBalancePaise,
-                grossToCollectPaise = grossToCollectPaise,
-                grossToPayPaise = grossToPayPaise,
-                unsettledPeopleCount = unsettledPeopleCount,
-                totalPeopleCount = activePeople.size,
-                onClick = onBalanceCardClick,
-            )
+                    Spacer(modifier = Modifier.height(20.dp))
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // C. Quick Actions
-            PattubookQuickActions(
-                onGiveMoneyClick = { activeTransactionType = LedgerEntryType.GIVEN },
-                onRecordReturnClick = { activeTransactionType = LedgerEntryType.GIVEN_BACK },
-            )
-
-            if (uiState.people.isNotEmpty()) {
-                val topPerson = remember(activePeople, uiState.outstandingBalancePaiseByPerson) {
-                    activePeople
-                        .filter { (uiState.outstandingBalancePaiseByPerson[it.id] ?: 0L) != 0L }
-                        .maxByOrNull { abs(uiState.outstandingBalancePaiseByPerson[it.id] ?: 0L) }
-                }
-                val topBalancePaise = topPerson?.let { uiState.outstandingBalancePaiseByPerson[it.id] ?: 0L } ?: 0L
-
-                Spacer(modifier = Modifier.height(14.dp))
-                // D. Smart Insight
-                SmartInsightCard(
-                    topPersonName = topPerson?.name,
-                    topBalancePaise = topBalancePaise,
-                    unsettledCount = unsettledPeopleCount,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // E. People Section Header & F. Expandable Search & Compact Filter Menu
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "People",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = TextPrimary,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (uiState.people.isNotEmpty()) {
+                    // E. People Section Header & F. Expandable Search & Compact Filter Menu
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            text = "${activePeople.size} active",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary,
-                            modifier = Modifier.padding(end = 4.dp)
+                            text = "People",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold
                         )
 
-                        // Filter Menu Button
-                        Box {
-                            IconButton(onClick = { filterMenuExpanded = true }) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.List,
-                                    contentDescription = "Filter People",
-                                    tint = if (selectedFilter != PeopleFilterOption.ALL) AccentGreen else TextSecondary,
-                                    modifier = Modifier.size(20.dp)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (uiState.people.isNotEmpty()) {
+                                Text(
+                                    text = "${activePeople.size} active",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextSecondary,
+                                    modifier = Modifier.padding(end = 4.dp)
                                 )
-                            }
 
-                            DropdownMenu(
-                                expanded = filterMenuExpanded,
-                                onDismissRequest = { filterMenuExpanded = false },
-                                modifier = Modifier.background(DarkSurfaceVariant)
-                            ) {
-                                PeopleFilterOption.entries.forEach { option ->
-                                    val isSelected = option == selectedFilter
-                                    DropdownMenuItem(
-                                        text = {
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Text(
-                                                    text = option.label,
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    color = if (isSelected) AccentGreen else TextPrimary,
-                                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                                                )
-                                                if (isSelected) {
-                                                    Spacer(modifier = Modifier.width(12.dp))
-                                                    Icon(
-                                                        imageVector = Icons.Default.Check,
-                                                        contentDescription = null,
-                                                        tint = AccentGreen,
-                                                        modifier = Modifier.size(16.dp)
-                                                    )
+                                // Filter Menu Button
+                                Box {
+                                    IconButton(onClick = { filterMenuExpanded = true }) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.List,
+                                            contentDescription = "Filter People",
+                                            tint = if (selectedFilter != PeopleFilterOption.ALL) AccentGreen else TextSecondary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+
+                                    DropdownMenu(
+                                        expanded = filterMenuExpanded,
+                                        onDismissRequest = { filterMenuExpanded = false },
+                                        modifier = Modifier.background(DarkSurfaceVariant)
+                                    ) {
+                                        PeopleFilterOption.entries.forEach { option ->
+                                            val isSelected = option == selectedFilter
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.SpaceBetween
+                                                    ) {
+                                                        Text(
+                                                            text = option.label,
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            color = if (isSelected) AccentGreen else TextPrimary,
+                                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                                                        )
+                                                        if (isSelected) {
+                                                            Spacer(modifier = Modifier.width(12.dp))
+                                                            Icon(
+                                                                imageVector = Icons.Default.Check,
+                                                                contentDescription = null,
+                                                                tint = AccentGreen,
+                                                                modifier = Modifier.size(16.dp)
+                                                            )
+                                                        }
+                                                    }
+                                                },
+                                                onClick = {
+                                                    selectedFilter = option
+                                                    filterMenuExpanded = false
                                                 }
-                                            }
-                                        },
-                                        onClick = {
-                                            selectedFilter = option
-                                            filterMenuExpanded = false
+                                            )
                                         }
+                                    }
+                                }
+
+                                // Search Toggle Button
+                                IconButton(
+                                    onClick = {
+                                        isSearchExpanded = !isSearchExpanded
+                                        if (!isSearchExpanded) searchQuery = ""
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = if (isSearchExpanded) Icons.Default.Clear else Icons.Default.Search,
+                                        contentDescription = if (isSearchExpanded) "Close Search" else "Search People",
+                                        tint = if (isSearchExpanded || searchQuery.isNotBlank()) AccentGreen else TextSecondary,
+                                        modifier = Modifier.size(20.dp)
                                     )
                                 }
                             }
                         }
-
-                        // Search Toggle Button
-                        IconButton(
-                            onClick = {
-                                isSearchExpanded = !isSearchExpanded
-                                if (!isSearchExpanded) searchQuery = ""
-                            }
-                        ) {
-                            Icon(
-                                imageVector = if (isSearchExpanded) Icons.Default.Clear else Icons.Default.Search,
-                                contentDescription = if (isSearchExpanded) "Close Search" else "Search People",
-                                tint = if (isSearchExpanded || searchQuery.isNotBlank()) AccentGreen else TextSecondary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
                     }
-                }
-            }
 
-            // Compact Active Filter Indicator Pill (if a filter is active)
-            if (selectedFilter != PeopleFilterOption.ALL) {
-                Spacer(modifier = Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(AccentGreenContainer)
-                            .border(1.dp, AccentGreen.copy(alpha = 0.4f), RoundedCornerShape(999.dp))
-                            .clickable { selectedFilter = PeopleFilterOption.ALL }
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
+                    // Compact Active Filter Indicator Pill (if a filter is active)
+                    if (selectedFilter != PeopleFilterOption.ALL) {
+                        Spacer(modifier = Modifier.height(6.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Filter: ${selectedFilter.label}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = AccentGreen,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Icon(
-                                imageVector = Icons.Default.Clear,
-                                contentDescription = "Reset Filter",
-                                tint = AccentGreen,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            AnimatedVisibility(
-                visible = isSearchExpanded,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically()
-            ) {
-                Column {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp)),
-                        placeholder = { Text("Search by name...", color = TextMuted) },
-                        singleLine = true,
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { searchQuery = "" }) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(AccentGreenContainer)
+                                    .border(1.dp, AccentGreen.copy(alpha = 0.4f), RoundedCornerShape(999.dp))
+                                    .clickable { selectedFilter = PeopleFilterOption.ALL }
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Filter: ${selectedFilter.label}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = AccentGreen,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
                                     Icon(
                                         imageVector = Icons.Default.Clear,
-                                        contentDescription = "Clear",
-                                        tint = TextSecondary,
-                                        modifier = Modifier.size(18.dp)
+                                        contentDescription = "Reset Filter",
+                                        tint = AccentGreen,
+                                        modifier = Modifier.size(14.dp)
                                     )
                                 }
                             }
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary,
-                            cursorColor = AccentGreen,
-                            focusedContainerColor = DarkSurface,
-                            unfocusedContainerColor = DarkSurface,
-                            focusedBorderColor = AccentGreen.copy(alpha = 0.5f),
-                            unfocusedBorderColor = BorderSubtle,
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = isSearchExpanded,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Column {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp)),
+                                placeholder = { Text("Search by name...", color = TextMuted) },
+                                singleLine = true,
+                                trailingIcon = {
+                                    if (searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { searchQuery = "" }) {
+                                            Icon(
+                                                imageVector = Icons.Default.Clear,
+                                                contentDescription = "Clear",
+                                                tint = TextSecondary,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = TextPrimary,
+                                    unfocusedTextColor = TextPrimary,
+                                    cursorColor = AccentGreen,
+                                    focusedContainerColor = DarkSurface,
+                                    unfocusedContainerColor = DarkSurface,
+                                    focusedBorderColor = AccentGreen.copy(alpha = 0.5f),
+                                    unfocusedBorderColor = BorderSubtle,
+                                )
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
+                    }
+
                 }
             }
-
-            Spacer(modifier = Modifier.height(10.dp))
 
             // G. People List or Empty States
             when {
-                uiState.isLoading -> {
+                uiState.isLoading -> item {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f),
+                            .padding(vertical = 48.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(color = AccentGreen)
                     }
                 }
 
-                uiState.people.isEmpty() -> {
+                uiState.people.isEmpty() -> item {
                     EmptyState(
                         title = "Start your first ledger",
                         description = "Track money you lend and receive, privately on this device.",
@@ -505,7 +529,7 @@ fun HomeScreen(
                     )
                 }
 
-                filteredPeople.isEmpty() && searchQuery.isNotBlank() -> {
+                filteredPeople.isEmpty() && searchQuery.isNotBlank() -> item {
                     EmptySearchState(
                         searchQuery = searchQuery,
                         onClearSearch = { searchQuery = "" },
@@ -513,7 +537,7 @@ fun HomeScreen(
                     )
                 }
 
-                filteredPeople.isEmpty() && selectedFilter != PeopleFilterOption.ALL -> {
+                filteredPeople.isEmpty() && selectedFilter != PeopleFilterOption.ALL -> item {
                     EmptyFilterState(
                         filterName = selectedFilter.label,
                         onResetFilter = { selectedFilter = PeopleFilterOption.ALL },
@@ -521,30 +545,34 @@ fun HomeScreen(
                     )
                 }
 
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        contentPadding = PaddingValues(bottom = 16.dp)
-                    ) {
-                        items(
-                            items = filteredPeople,
-                            key = { person -> person.id }
-                        ) { person ->
-                            val personBalance = uiState.outstandingBalancePaiseByPerson[person.id] ?: 0L
-                            val latestTimestamp = uiState.activeEntries.firstOrNull { it.personId == person.id }?.timestamp
+                activePeople.isEmpty() && selectedFilter == PeopleFilterOption.ALL -> item {
+                    EmptyState(
+                        title = "No active people",
+                        description = "Hidden people are still saved. View them to restore someone to the overview.",
+                        actionLabel = "View hidden people",
+                        actionIcon = Icons.AutoMirrored.Filled.List,
+                        icon = Icons.AutoMirrored.Filled.List,
+                        onAddPersonClick = { selectedFilter = PeopleFilterOption.HIDDEN },
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
 
-                            PersonBalanceRow(
-                                person = person,
-                                outstandingBalancePaise = personBalance,
-                                latestActivityTimestamp = latestTimestamp,
-                                onClick = { onPersonClick(person.id) },
-                                onHideClick = { personToHide = person },
-                                onUnhideClick = { personToUnhide = person },
-                                onDeleteClick = { personToDelete = person }
-                            )
-                        }
-                    }
+                else -> itemsIndexed(
+                    items = filteredPeople,
+                    key = { _, person -> person.id }
+                ) { _, person ->
+                    val personBalance = uiState.outstandingBalancePaiseByPerson[person.id] ?: 0L
+                    val latestTimestamp = uiState.activeEntries.firstOrNull { it.personId == person.id }?.timestamp
+
+                    PersonBalanceRow(
+                        person = person,
+                        outstandingBalancePaise = personBalance,
+                        latestActivityTimestamp = latestTimestamp,
+                        onClick = { onPersonClick(person.id) },
+                        onHideClick = { personToHide = person },
+                        onUnhideClick = { personToUnhide = person },
+                        onDeleteClick = { personToDelete = person }
+                    )
                 }
             }
         }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +27,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,7 +35,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
@@ -78,14 +79,12 @@ fun PersonBalanceRow(
         else -> Triple("Settled", TextMuted, DarkSurfaceVariant)
     }
 
-    val alphaAmount = if (person.isHidden) 0.65f else 1.0f
     val activityLabel = latestActivityTimestamp?.let(DateFormatter::formatRelativeUpdate) ?: "No activity yet"
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(cardShape)
-            .alpha(alphaAmount)
             .background(
                 brush = Brush.horizontalGradient(
                     colors = listOf(
@@ -184,8 +183,8 @@ fun PersonBalanceRow(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(horizontalAlignment = Alignment.End) {
+            Column(horizontalAlignment = Alignment.End) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     val (balanceColor, balanceText) = when {
                         outstandingBalancePaise > 0 ->
                             AccentGreen to CurrencyFormatter.formatPaiseToRupees(outstandingBalancePaise)
@@ -203,14 +202,29 @@ fun PersonBalanceRow(
                         color = balanceColor,
                         fontWeight = FontWeight.Bold
                     )
+                    if (!person.isHidden) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = TextMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.width(6.dp))
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    tint = TextMuted,
-                    modifier = Modifier.size(18.dp)
-                )
+                if (person.isHidden) {
+                    TextButton(
+                        onClick = onUnhideClick,
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                    ) {
+                        Text(
+                            text = "Unhide",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = AccentGreen,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
             }
         }
 

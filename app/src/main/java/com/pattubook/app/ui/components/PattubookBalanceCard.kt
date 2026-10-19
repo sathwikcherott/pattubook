@@ -132,7 +132,22 @@ fun PattubookBalanceCard(
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
                 label = "net_balance_anim"
             ) { net ->
-                if (isAllSettled) {
+                if (totalPeopleCount == 0) {
+                    Column {
+                        Text(
+                            text = "No active people",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Add someone or restore a person from Hidden people.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary
+                        )
+                    }
+                } else if (isAllSettled) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
