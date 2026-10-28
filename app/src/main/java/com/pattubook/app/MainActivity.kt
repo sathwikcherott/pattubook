@@ -43,6 +43,7 @@ import com.pattubook.app.ui.theme.PattubookTheme
 import com.pattubook.app.ui.util.AppLockManager
 import com.pattubook.app.ui.viewmodel.PeopleViewModel
 import com.pattubook.app.ui.viewmodel.PersonDetailViewModel
+import com.pattubook.app.widget.PattubookWidgetUpdater
 import kotlinx.coroutines.launch
 
 class MainActivity : FragmentActivity() {
@@ -225,6 +226,9 @@ class MainActivity : FragmentActivity() {
                                                     appLockManager.setAppLockEnabled(true)
                                                     isAppLockEnabled = true
                                                     isUnlocked = true
+                                                    coroutineScope.launch {
+                                                        PattubookWidgetUpdater.updateWidget(context)
+                                                    }
                                                     Toast.makeText(context, "App Lock enabled", Toast.LENGTH_SHORT).show()
                                                 },
                                                 onError = { msg ->
@@ -241,6 +245,9 @@ class MainActivity : FragmentActivity() {
                                                 appLockManager.setAppLockEnabled(false)
                                                 isAppLockEnabled = false
                                                 isUnlocked = true
+                                                coroutineScope.launch {
+                                                    PattubookWidgetUpdater.updateWidget(context)
+                                                }
                                                 Toast.makeText(context, "App Lock disabled", Toast.LENGTH_SHORT).show()
                                             },
                                             onError = { msg ->
@@ -337,6 +344,9 @@ class MainActivity : FragmentActivity() {
                                 },
                                 onRecordReturnConfirm = { amountPaise, note, timestamp ->
                                     detailViewModel.addMoneyGivenBack(amountPaise, timestamp = timestamp, note = note)
+                                },
+                                onSetEntryPaid = { entry, isPaid ->
+                                    detailViewModel.setEntryPaid(entry, isPaid)
                                 },
                                 onUndoClick = {
                                     detailViewModel.undoLastLedgerEntry()

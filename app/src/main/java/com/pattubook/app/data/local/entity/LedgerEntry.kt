@@ -29,6 +29,7 @@ data class LedgerEntry(
     val note: String? = null,
     val isDeleted: Boolean = false,
     val isArchived: Boolean = false,
+    val isPaid: Boolean = false,
 ) {
     init {
         require(amountPaise >= 0) { "amountPaise must be non-negative" }

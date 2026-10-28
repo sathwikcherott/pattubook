@@ -357,7 +357,7 @@ fun HomeScreen(
                             if (uiState.people.isNotEmpty()) {
                                 Text(
                                     text = "${activePeople.size} active",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = TextSecondary,
                                     modifier = Modifier.padding(end = 4.dp)
                                 )
@@ -586,18 +586,17 @@ private fun AddPersonIconButton(
 ) {
     val shape = RoundedCornerShape(14.dp)
 
-    Box(
+    IconButton(
+        onClick = onClick,
         modifier = modifier
-            .size(44.dp)
+            .size(48.dp)
             .clip(shape)
             .background(AccentGreenContainer)
             .border(1.dp, AccentGreen.copy(alpha = 0.45f), shape)
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = Icons.Default.Add,
-            contentDescription = "Add Person",
+            contentDescription = "Add person",
             tint = AccentGreen,
             modifier = Modifier.size(22.dp)
         )

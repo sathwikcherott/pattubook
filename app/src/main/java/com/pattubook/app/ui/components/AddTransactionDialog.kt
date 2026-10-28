@@ -126,7 +126,7 @@ fun AddTransactionDialog(
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedTimestamp
+            initialSelectedDateMillis = DateFormatter.toUtcDateMillis(selectedTimestamp)
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },

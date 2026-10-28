@@ -12,7 +12,6 @@ import com.pattubook.app.data.local.entity.Person
 import com.pattubook.app.widget.PattubookWidgetUpdater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -237,14 +236,8 @@ class PattubookRepository(
     fun observeGlobalTotalGivenBack(): Flow<Long> =
         ledgerEntryDao.observeGlobalTotalGivenBack()
 
-    fun observeGlobalTotalOutstanding(): Flow<Long> {
-        return combine(
-            observeGlobalTotalGiven(),
-            observeGlobalTotalGivenBack()
-        ) { totalGiven, totalGivenBack ->
-            totalGiven - totalGivenBack
-        }
-    }
+    fun observeGlobalTotalOutstanding(): Flow<Long> =
+        ledgerEntryDao.observeGlobalTotalOutstanding()
 
     fun observeTotalGiven(personId: Long): Flow<Long> =
         ledgerEntryDao.observeTotalGiven(personId)
@@ -252,14 +245,8 @@ class PattubookRepository(
     fun observeTotalGivenBack(personId: Long): Flow<Long> =
         ledgerEntryDao.observeTotalGivenBack(personId)
 
-    fun observeOutstandingBalance(personId: Long): Flow<Long> {
-        return combine(
-            observeTotalGiven(personId),
-            observeTotalGivenBack(personId)
-        ) { totalGiven, totalGivenBack ->
-            totalGiven - totalGivenBack
-        }
-    }
+    fun observeOutstandingBalance(personId: Long): Flow<Long> =
+        ledgerEntryDao.observeOutstandingBalance(personId)
 
     // --- Ledger History Operations ---
 
@@ -321,6 +308,25 @@ class PattubookRepository(
         }
     }
 
+    suspend fun setEntryPaid(entryId: Long, isPaid: Boolean): Result<Unit> {
+        return try {
+            val entry = ledgerEntryDao.getEntryById(entryId)
+                ?: return Result.failure(IllegalArgumentException("Transaction no longer exists."))
+            if (entry.type != LedgerEntryType.GIVEN) {
+                return Result.failure(IllegalArgumentException("Only money given can be marked as paid."))
+            }
+            val updatedRows = ledgerEntryDao.setEntryPaid(entryId, isPaid)
+            if (updatedRows == 0) {
+                Result.failure(IllegalStateException("Transaction could not be updated."))
+            } else {
+                notifyWidgetUpdate()
+                Result.success(Unit)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun softDeleteEntry(entryId: Long): Result<Unit> {
         return try {
             ledgerEntryDao.setEntryDeleted(entryId, true)
@@ -332,13 +338,31 @@ class PattubookRepository(
     }
 
     suspend fun restoreDeletedEntry(entryId: Long): Result<Unit> {
-        return try {
-            ledgerEntryDao.setEntryDeleted(entryId, false)
-            notifyWidgetUpdate()
-            Result.success(Unit)
+        val restoreOperation: suspend () -> Result<Unit> = {
+            val entry = ledgerEntryDao.getEntryById(entryId)
+            if (entry == null) {
+                Result.failure(IllegalArgumentException("Transaction no longer exists."))
+            } else {
+                val person = personDao.getPersonById(entry.personId)
+                if (person == null || person.isDeleted) {
+                    Result.failure(IllegalStateException("Restore the person before restoring this transaction."))
+                } else {
+                    val updatedRows = ledgerEntryDao.setEntryDeleted(entryId, false)
+                    if (updatedRows == 0) {
+                        Result.failure(IllegalStateException("Transaction could not be restored."))
+                    } else {
+                        Result.success(Unit)
+                    }
+                }
+            }
+        }
+        val result = try {
+            if (database != null) database.withTransaction { restoreOperation() } else restoreOperation()
         } catch (e: Exception) {
             Result.failure(e)
         }
+        if (result.isSuccess) notifyWidgetUpdate()
+        return result
     }
 
     suspend fun permanentlyDeleteEntry(entryId: Long): Result<Unit> {
@@ -461,48 +485,57 @@ class PattubookRepository(
      * All monetary values are preserved strictly as Long integer paise.
      */
     suspend fun generateBackupJson(): Result<String> {
-        return try {
-            val people = personDao.getAllPeopleOnce()
-            val entries = ledgerEntryDao.getAllEntriesOnce()
-
-            val root = JSONObject()
-            root.put("version", 1)
-            root.put("timestamp", System.currentTimeMillis())
-
-            val peopleArray = JSONArray()
-            for (person in people) {
-                val personObj = JSONObject()
-                personObj.put("id", person.id)
-                personObj.put("name", person.name)
-                personObj.put("createdAt", person.createdAt)
-                personObj.put("isHidden", person.isHidden)
-                personObj.put("isDeleted", person.isDeleted)
-                peopleArray.put(personObj)
-            }
-            root.put("people", peopleArray)
-
-            val entriesArray = JSONArray()
-            for (entry in entries) {
-                val entryObj = JSONObject()
-                entryObj.put("id", entry.id)
-                entryObj.put("personId", entry.personId)
-                entryObj.put("amountPaise", entry.amountPaise)
-                entryObj.put("type", entry.type.name)
-                entryObj.put("timestamp", entry.timestamp)
-                entryObj.put("isDeleted", entry.isDeleted)
-                entryObj.put("isArchived", entry.isArchived)
-                if (entry.note != null) {
-                    entryObj.put("note", entry.note)
+        return withContext(Dispatchers.IO) {
+            try {
+                val snapshot = if (database != null) {
+                    database.withTransaction {
+                        personDao.getAllPeopleOnce() to ledgerEntryDao.getAllEntriesOnce()
+                    }
                 } else {
-                    entryObj.put("note", JSONObject.NULL)
+                    personDao.getAllPeopleOnce() to ledgerEntryDao.getAllEntriesOnce()
                 }
-                entriesArray.put(entryObj)
-            }
-            root.put("ledgerEntries", entriesArray)
+                val (people, entries) = snapshot
 
-            Result.success(root.toString(2))
-        } catch (e: Exception) {
-            Result.failure(e)
+                val root = JSONObject()
+                root.put("version", 1)
+                root.put("timestamp", System.currentTimeMillis())
+
+                val peopleArray = JSONArray()
+                for (person in people) {
+                    val personObj = JSONObject()
+                    personObj.put("id", person.id)
+                    personObj.put("name", person.name)
+                    personObj.put("createdAt", person.createdAt)
+                    personObj.put("isHidden", person.isHidden)
+                    personObj.put("isDeleted", person.isDeleted)
+                    peopleArray.put(personObj)
+                }
+                root.put("people", peopleArray)
+
+                val entriesArray = JSONArray()
+                for (entry in entries) {
+                    val entryObj = JSONObject()
+                    entryObj.put("id", entry.id)
+                    entryObj.put("personId", entry.personId)
+                    entryObj.put("amountPaise", entry.amountPaise)
+                    entryObj.put("type", entry.type.name)
+                    entryObj.put("timestamp", entry.timestamp)
+                    entryObj.put("isDeleted", entry.isDeleted)
+                    entryObj.put("isArchived", entry.isArchived)
+                    entryObj.put("isPaid", entry.isPaid)
+                    if (entry.note != null) {
+                        entryObj.put("note", entry.note)
+                    } else {
+                        entryObj.put("note", JSONObject.NULL)
+                    }
+                    entriesArray.put(entryObj)
+                }
+                root.put("ledgerEntries", entriesArray)
+
+                Result.success(root.toString(2))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
         }
     }
 
@@ -596,6 +629,7 @@ class PattubookRepository(
                     val timestamp = eObj.getLong("timestamp")
                     val isDeleted = eObj.optBoolean("isDeleted", false)
                     val isArchived = eObj.optBoolean("isArchived", false)
+                    val isPaid = eObj.optBoolean("isPaid", false)
                     val note = if (eObj.isNull("note")) null else eObj.optString("note").trim().ifEmpty { null }
 
                     if (!personIdsSet.contains(personId)) {
@@ -626,6 +660,7 @@ class PattubookRepository(
                             note = note,
                             isDeleted = isDeleted,
                             isArchived = isArchived,
+                            isPaid = isPaid && type == LedgerEntryType.GIVEN,
                         )
                     )
                 }

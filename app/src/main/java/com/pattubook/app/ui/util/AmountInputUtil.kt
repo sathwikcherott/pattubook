@@ -31,7 +31,11 @@ object AmountInputUtil {
             else -> return null
         }
 
-        val totalPaise = rupeesLong * 100L + paiseLong
+        val totalPaise = try {
+            Math.addExact(Math.multiplyExact(rupeesLong, 100L), paiseLong)
+        } catch (_: ArithmeticException) {
+            return null
+        }
         return if (totalPaise > 0L) totalPaise else null
     }
 

@@ -230,7 +230,7 @@ private fun ActivityItemRow(
                         )
                         Text(
                             text = DateFormatter.formatEpochMillis(entry.timestamp),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = TextSecondary
                         )
                     }

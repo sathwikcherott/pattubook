@@ -1,11 +1,24 @@
 package com.pattubook.app.ui.util
 
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
 object DateFormatter {
+    /** Converts an instant to the UTC-midnight millis expected by Compose DatePicker,
+     * preserving the calendar day as seen in the device's local time zone.
+     */
+    fun toUtcDateMillis(epochMillis: Long): Long {
+        val localDate = Instant.ofEpochMilli(epochMillis)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+        return localDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+    }
+
     fun formatEpochMillis(epochMillis: Long): String {
         val date = Date(epochMillis)
         val sdf = SimpleDateFormat("MMM d, yyyy • h:mm a", Locale.getDefault())

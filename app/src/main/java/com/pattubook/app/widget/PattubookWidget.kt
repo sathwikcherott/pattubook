@@ -33,6 +33,7 @@ import androidx.glance.unit.ColorProvider
 import com.pattubook.app.data.local.PattubookDatabase
 import com.pattubook.app.data.local.entity.Person
 import com.pattubook.app.data.repository.PattubookRepository
+import com.pattubook.app.ui.util.AppLockManager
 import com.pattubook.app.ui.util.CurrencyFormatter
 import kotlinx.coroutines.flow.first
 
@@ -50,16 +51,24 @@ class PattubookWidget : GlanceAppWidget() {
             database = database,
         )
 
-        val people = repository.observeAllPeople().first()
-        val balancesMap = repository.observeAllPersonBalances().first()
-
-        val activePeopleWithBalances = people.filter { !it.isDeleted }
+        val isAppLockEnabled = AppLockManager(context).isAppLockEnabled()
+        val people = if (isAppLockEnabled) {
+            emptyList()
+        } else {
+            repository.observeAllPeople().first().filter { !it.isHidden && !it.isDeleted }
+        }
+        val balancesMap = if (isAppLockEnabled) {
+            emptyMap()
+        } else {
+            repository.observeAllPersonBalances().first()
+        }
 
         provideContent {
             GlanceWidgetContent(
                 context = context,
-                people = activePeopleWithBalances,
+                people = people,
                 balancesMap = balancesMap,
+                isAppLockEnabled = isAppLockEnabled,
             )
         }
     }
@@ -69,6 +78,7 @@ class PattubookWidget : GlanceAppWidget() {
         context: Context,
         people: List<Person>,
         balancesMap: Map<Long, Long>,
+        isAppLockEnabled: Boolean,
     ) {
         val darkBackground = Color(0xFF0B0D10)
         val accentGreen = Color(0xFF20DC8E)
@@ -107,7 +117,23 @@ class PattubookWidget : GlanceAppWidget() {
 
             Spacer(modifier = GlanceModifier.height(10.dp))
 
-            if (people.isEmpty()) {
+            if (isAppLockEnabled) {
+                Box(
+                    modifier = GlanceModifier
+                        .fillMaxSize()
+                        .background(surfaceVariant)
+                        .padding(12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Open Pattubook to view your ledger",
+                        style = TextStyle(
+                            color = ColorProvider(textSecondary),
+                            fontSize = 13.sp
+                        )
+                    )
+                }
+            } else if (people.isEmpty()) {
                 Box(
                     modifier = GlanceModifier
                         .fillMaxSize()

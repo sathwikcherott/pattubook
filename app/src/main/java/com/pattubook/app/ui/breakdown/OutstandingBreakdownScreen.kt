@@ -61,7 +61,7 @@ fun OutstandingBreakdownScreen(
 ) {
     // Filter contacts who have a positive outstanding balance (> 0)
     val positivePeople = uiState.people.filter { person ->
-        (uiState.outstandingBalancePaiseByPerson[person.id] ?: 0L) > 0L
+        !person.isHidden && (uiState.outstandingBalancePaiseByPerson[person.id] ?: 0L) > 0L
     }
 
     val totalOutstandingPaise = max(0L, uiState.totalOutstandingPaise)

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.pattubook.app.data.local.entity.LedgerEntry
+import com.pattubook.app.data.local.entity.LedgerEntryType
 import com.pattubook.app.data.repository.PattubookRepository
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -182,6 +183,19 @@ class PersonDetailViewModel(
             }.onFailure { throwable ->
                 lastUndoneEntry = null
                 val userMsg = throwable.message ?: "Failed to restore transaction."
+                _errorMessage.value = userMsg
+                _eventChannel.send(PersonDetailUiEvent.Error(userMsg))
+            }
+        }
+    }
+
+    fun setEntryPaid(entry: LedgerEntry, isPaid: Boolean) {
+        if (entry.type != LedgerEntryType.GIVEN) return
+        lastUndoneEntry = null
+        viewModelScope.launch {
+            val result = repository.setEntryPaid(entry.id, isPaid)
+            result.onFailure { throwable ->
+                val userMsg = throwable.message ?: "Failed to update payment status."
                 _errorMessage.value = userMsg
                 _eventChannel.send(PersonDetailUiEvent.Error(userMsg))
             }

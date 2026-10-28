@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
@@ -171,27 +170,11 @@ fun MoreScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Information Cards
+            // Keep the storage and backup behavior clear without pushing settings actions down.
             InfoCard(
                 icon = Icons.Default.Lock,
                 title = "Privacy & Security",
-                description = "100% offline personal ledger. Your financial records never leave this device."
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            InfoCard(
-                icon = Icons.Default.Info,
-                title = "Local Database",
-                description = "Powered by Android Room SQLite engine for instant offline persistence."
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            InfoCard(
-                icon = Icons.Default.Info,
-                title = "Pattubook Version",
-                description = "Version 1.0.0 • Personal Debt & Lending Ledger"
+                description = "Your ledger stays on this device unless you choose to export a backup."
             )
 
             Spacer(modifier = Modifier.height(28.dp))
@@ -199,9 +182,9 @@ fun MoreScreen(
             // SECURITY Section Header
             Text(
                 text = "SECURITY",
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge,
                 color = TextSecondary,
-                letterSpacing = 1.2.sp
+                letterSpacing = 1.sp
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -225,7 +208,7 @@ fun MoreScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Lock,
-                            contentDescription = "App Lock",
+                            contentDescription = null,
                             tint = AccentGreen,
                             modifier = Modifier.size(22.dp)
                         )
@@ -243,7 +226,7 @@ fun MoreScreen(
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Require device authentication when opening Pattubook",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = TextSecondary
                         )
                     }
@@ -268,9 +251,9 @@ fun MoreScreen(
             // DATA Section Header
             Text(
                 text = "DATA MANAGEMENT",
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge,
                 color = TextSecondary,
-                letterSpacing = 1.2.sp
+                letterSpacing = 1.sp
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -317,7 +300,14 @@ fun MoreScreen(
                 isDestructive = true
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
+            Text(
+                text = "Pattubook 1.0.0 • Personal lending ledger",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+            Spacer(modifier = Modifier.height(56.dp))
         }
     }
 }
@@ -348,7 +338,7 @@ private fun InfoCard(
             ) {
                 Icon(
                     imageVector = icon,
-                    contentDescription = title,
+                    contentDescription = null,
                     tint = AccentGreen,
                     modifier = Modifier.size(22.dp)
                 )
@@ -366,7 +356,7 @@ private fun InfoCard(
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = description,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = TextSecondary
                 )
             }
@@ -410,7 +400,7 @@ private fun DataActionCard(
             ) {
                 Icon(
                     imageVector = icon,
-                    contentDescription = title,
+                    contentDescription = null,
                     tint = iconColor,
                     modifier = Modifier.size(22.dp)
                 )
@@ -428,7 +418,7 @@ private fun DataActionCard(
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = description,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = TextSecondary
                 )
             }

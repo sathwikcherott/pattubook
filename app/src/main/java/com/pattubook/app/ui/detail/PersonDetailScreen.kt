@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -83,6 +84,7 @@ fun PersonDetailScreen(
     onEditTransactionConfirm: (LedgerEntry) -> Unit = {},
     onRedoClick: () -> Unit = {},
     eventFlow: Flow<PersonDetailUiEvent>? = null,
+    onSetEntryPaid: (LedgerEntry, Boolean) -> Unit = { _, _ -> },
 ) {
     var activeTransactionType by remember { mutableStateOf<LedgerEntryType?>(null) }
     var entryToEdit by remember { mutableStateOf<LedgerEntry?>(null) }
@@ -95,13 +97,15 @@ fun PersonDetailScreen(
         val active = uiState.transactions
             .filter { !it.isArchived }
             .sortedWith(
-                compareBy<LedgerEntry> { if (it.type == LedgerEntryType.GIVEN) "Money Given" else "Money Returned" }
+                compareBy<LedgerEntry> { it.isPaid }
+                    .thenBy { if (it.type == LedgerEntryType.GIVEN) "Money Given" else "Money Returned" }
                     .thenByDescending { it.timestamp }
             )
         val archived = uiState.transactions
             .filter { it.isArchived }
             .sortedWith(
-                compareBy<LedgerEntry> { if (it.type == LedgerEntryType.GIVEN) "Money Given" else "Money Returned" }
+                compareBy<LedgerEntry> { it.isPaid }
+                    .thenBy { if (it.type == LedgerEntryType.GIVEN) "Money Given" else "Money Returned" }
                     .thenByDescending { it.timestamp }
             )
         active to archived
@@ -377,6 +381,8 @@ fun PersonDetailScreen(
             PattubookQuickActions(
                 onGiveMoneyClick = { activeTransactionType = LedgerEntryType.GIVEN },
                 onRecordReturnClick = { activeTransactionType = LedgerEntryType.GIVEN_BACK },
+                returnButtonLabel = "Mark as Returned",
+                returnButtonIcon = Icons.Default.Check,
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -468,7 +474,8 @@ fun PersonDetailScreen(
                                 entry = entry,
                                 onArchiveSwipe = onArchiveTransactionSwipe,
                                 onEditClick = { entryToEdit = entry },
-                                onDeleteClick = { entryToDelete = entry }
+                                onDeleteClick = { entryToDelete = entry },
+                                onSetEntryPaid = onSetEntryPaid,
                             )
                         }
 
@@ -492,7 +499,8 @@ fun PersonDetailScreen(
                                     entry = entry,
                                     onArchiveSwipe = onArchiveTransactionSwipe,
                                     onEditClick = { entryToEdit = entry },
-                                    onDeleteClick = { entryToDelete = entry }
+                                    onDeleteClick = { entryToDelete = entry },
+                                    onSetEntryPaid = onSetEntryPaid,
                                 )
                             }
                         }

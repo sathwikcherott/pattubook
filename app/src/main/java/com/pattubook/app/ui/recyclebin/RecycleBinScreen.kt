@@ -117,6 +117,7 @@ fun RecycleBinScreen(
         RestoreTransactionDialog(
             entry = entry,
             personName = personNameMap[entry.personId] ?: "Person #${entry.personId}",
+            personIsDeleted = uiState.deletedPeople.any { it.id == entry.personId },
             onDismiss = { entryToRestore = null },
             onConfirmRestore = {
                 entryToRestore = null
@@ -616,6 +617,7 @@ fun RestorePersonDialog(
 fun RestoreTransactionDialog(
     entry: LedgerEntry,
     personName: String,
+    personIsDeleted: Boolean = false,
     onDismiss: () -> Unit,
     onConfirmRestore: () -> Unit,
     modifier: Modifier = Modifier,
@@ -638,7 +640,11 @@ fun RestoreTransactionDialog(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "This will restore this ${CurrencyFormatter.formatPaiseToRupees(entry.amountPaise)} transaction for $personName to your active ledger.",
+                text = if (personIsDeleted) {
+                    "Restore $personName first. This transaction cannot be restored while the person is in the recycle bin."
+                } else {
+                    "This will restore this ${CurrencyFormatter.formatPaiseToRupees(entry.amountPaise)} transaction for $personName to your active ledger."
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary
             )
@@ -654,13 +660,17 @@ fun RestoreTransactionDialog(
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(
                     onClick = onConfirmRestore,
+                    enabled = !personIsDeleted,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AccentGreen,
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Restore", style = MaterialTheme.typography.labelLarge)
+                    Text(
+                        if (personIsDeleted) "Restore person first" else "Restore",
+                        style = MaterialTheme.typography.labelLarge
+                    )
                 }
             }
         }

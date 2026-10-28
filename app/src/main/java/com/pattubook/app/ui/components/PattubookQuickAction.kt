@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -20,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -35,6 +37,8 @@ fun PattubookQuickActions(
     onGiveMoneyClick: () -> Unit,
     onRecordReturnClick: () -> Unit,
     modifier: Modifier = Modifier,
+    returnButtonLabel: String = "Record Return",
+    returnButtonIcon: ImageVector = Icons.Default.Refresh,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -86,13 +90,13 @@ fun PattubookQuickActions(
                 horizontalArrangement = Arrangement.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = "Record Return",
+                    imageVector = returnButtonIcon,
+                    contentDescription = returnButtonLabel,
                     tint = AccentBlue,
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "Record Return",
+                    text = returnButtonLabel,
                     style = MaterialTheme.typography.labelLarge,
                     color = TextPrimary,
                 )

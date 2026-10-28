@@ -146,7 +146,7 @@ fun PersonBalanceRow(
                             ) {
                                 Text(
                                     text = "Hidden",
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.labelMedium,
                                     color = TextSecondary,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -165,7 +165,7 @@ fun PersonBalanceRow(
                         ) {
                             Text(
                                 text = statusLabel,
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                                 color = statusColor,
                                 fontWeight = FontWeight.Medium
                             )
@@ -173,7 +173,7 @@ fun PersonBalanceRow(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = activityLabel,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.bodySmall,
                             color = TextSecondary,
                             maxLines = 1,
                         )

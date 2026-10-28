@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -20,8 +21,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
@@ -42,9 +43,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -73,6 +85,7 @@ fun SwipeableTransactionRow(
     onEditClick: (LedgerEntry) -> Unit,
     onDeleteClick: (LedgerEntry) -> Unit,
     modifier: Modifier = Modifier,
+    onSetEntryPaid: (LedgerEntry, Boolean) -> Unit = { _, _ -> },
 ) {
     val coroutineScope = rememberCoroutineScope()
     var rowWidthPx by remember { mutableFloatStateOf(0f) }
@@ -165,7 +178,35 @@ fun SwipeableTransactionRow(
             TransactionRow(
                 entry = entry,
                 onEditClick = onEditClick,
-                onDeleteClick = onDeleteClick
+                onDeleteClick = onDeleteClick,
+                onSetEntryPaid = onSetEntryPaid,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PaidCheckboxGlyph(isPaid: Boolean, color: Color) {
+    Canvas(modifier = Modifier.size(20.dp)) {
+        val strokeWidth = 1.8.dp.toPx()
+        val inset = strokeWidth / 2
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(inset, inset),
+            size = Size(size.width - strokeWidth, size.height - strokeWidth),
+            cornerRadius = CornerRadius(3.dp.toPx()),
+            style = Stroke(width = strokeWidth),
+        )
+        if (isPaid) {
+            val checkmark = Path().apply {
+                moveTo(size.width * 0.22f, size.height * 0.52f)
+                lineTo(size.width * 0.43f, size.height * 0.72f)
+                lineTo(size.width * 0.80f, size.height * 0.30f)
+            }
+            drawPath(
+                path = checkmark,
+                color = color,
+                style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
             )
         }
     }
@@ -178,16 +219,21 @@ fun TransactionRow(
     modifier: Modifier = Modifier,
     onEditClick: (LedgerEntry) -> Unit = {},
     onDeleteClick: (LedgerEntry) -> Unit = {},
+    onSetEntryPaid: (LedgerEntry, Boolean) -> Unit = { _, _ -> },
 ) {
     val cardShape = RoundedCornerShape(18.dp)
     val isGiven = entry.type == LedgerEntryType.GIVEN
     val accentColor = if (isGiven) AccentGreen else AccentBlue
     val containerColor = if (isGiven) AccentGreenContainer else AccentBlueContainer
-    val typeIcon = if (isGiven) Icons.Default.Add else Icons.Default.Refresh
     val typeTitle = if (isGiven) "Money Given" else "Money Returned"
 
     var dropdownExpanded by remember { mutableStateOf(false) }
-    val cardAlpha = if (entry.isArchived) 0.65f else 1.0f
+    val cardAlpha = when {
+        entry.isArchived && entry.isPaid -> 0.5f
+        entry.isArchived -> 0.65f
+        entry.isPaid -> 0.55f
+        else -> 1.0f
+    }
 
     Box(
         modifier = modifier
@@ -217,15 +263,34 @@ fun TransactionRow(
                             .size(42.dp)
                             .clip(CircleShape)
                             .background(containerColor)
-                            .border(1.dp, accentColor.copy(alpha = 0.3f), CircleShape),
+                            .border(1.dp, accentColor.copy(alpha = 0.3f), CircleShape)
+                            .then(
+                                if (isGiven) {
+                                    Modifier
+                                        .toggleable(
+                                            value = entry.isPaid,
+                                            role = Role.Checkbox,
+                                            onValueChange = { onSetEntryPaid(entry, it) },
+                                        )
+                                        .semantics {
+                                            contentDescription = if (entry.isPaid) "Paid" else "Mark as paid"
+                                        }
+                                } else {
+                                    Modifier
+                                }
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = typeIcon,
-                            contentDescription = typeTitle,
-                            tint = accentColor,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        if (isGiven) {
+                            PaidCheckboxGlyph(isPaid = entry.isPaid, color = accentColor)
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = typeTitle,
+                                tint = accentColor,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(12.dp))
@@ -239,7 +304,7 @@ fun TransactionRow(
                         )
                         Text(
                             text = DateFormatter.formatEpochMillis(entry.timestamp),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = TextSecondary
                         )
                     }
