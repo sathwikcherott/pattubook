@@ -106,6 +106,26 @@ Restore operations are validated before modifying existing data.
 
 ---
 
+## 📱 Screenshots
+
+A quick look at Pattubook's focused, dark interface for tracking personal loans.
+
+<table>
+  <tr>
+    <td align="center"><strong>Home</strong><br><img src="screenshots/home.jpg" alt="Pattubook home screen" width="260"></td>
+    <td align="center"><strong>Activity</strong><br><img src="screenshots/activity.jpg" alt="Pattubook activity timeline" width="260"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Person Ledger</strong><br><img src="screenshots/person-ledger.jpg" alt="Pattubook person ledger" width="260"></td>
+    <td align="center"><strong>Give Money</strong><br><img src="screenshots/give-money.jpg" alt="Pattubook Give Money form" width="260"></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><strong>Settings</strong><br><img src="screenshots/settings.jpg" alt="Pattubook settings screen" width="260"></td>
+  </tr>
+</table>
+
+---
+
 ## 🎨 Design
 
 Pattubook uses a dark, minimal visual language focused on readability and hierarchy.
