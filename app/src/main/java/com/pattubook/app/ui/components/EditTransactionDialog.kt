@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -43,7 +45,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -78,7 +79,7 @@ fun EditTransactionDialog(
         AmountInputUtil.formatPaiseToPlainRupees(entry.amountPaise)
     }
 
-    var amountInput by remember { mutableStateOf(initialAmountText) }
+    var amountExpression by remember { mutableStateOf(initialAmountText) }
     var noteInput by remember { mutableStateOf(entry.note ?: "") }
     var selectedTimestamp by remember { mutableLongStateOf(entry.timestamp) }
 
@@ -88,7 +89,7 @@ fun EditTransactionDialog(
     var amountError by remember { mutableStateOf<String?>(null) }
 
     fun submit() {
-        val parsedPaise = AmountInputUtil.parseRupeesToPaise(amountInput)
+        val parsedPaise = AmountInputUtil.parseAdditionExpressionToPaise(amountExpression)
         if (parsedPaise == null || parsedPaise <= 0) {
             amountError = "Enter a valid positive amount (e.g. 500 or 25.50)"
         } else {
@@ -213,6 +214,7 @@ fun EditTransactionDialog(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
                 .background(DarkSurface)
+                .verticalScroll(rememberScrollState())
                 .padding(20.dp)
         ) {
             Text(
@@ -224,33 +226,18 @@ fun EditTransactionDialog(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Amount Field
-            OutlinedTextField(
-                value = amountInput,
-                onValueChange = {
-                    amountInput = it
+            AmountExpressionInput(
+                expression = amountExpression,
+                accent = primaryAccent,
+                onKeyPress = { key ->
+                    amountExpression = when (key) {
+                        '+' -> AmountInputUtil.appendAdditionOperator(amountExpression)
+                        '.' -> AmountInputUtil.appendDecimalPoint(amountExpression)
+                        '\b' -> AmountInputUtil.removeLastInputCharacter(amountExpression)
+                        else -> AmountInputUtil.appendDigit(amountExpression, key)
+                    }
                     if (amountError != null) amountError = null
-                },
-                label = { Text("Amount (₹)") },
-                prefix = { Text("₹ ", color = TextPrimary, fontWeight = FontWeight.Bold) },
-                singleLine = true,
-                isError = amountError != null,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = DarkSurfaceVariant,
-                    unfocusedContainerColor = DarkSurfaceVariant,
-                    errorContainerColor = DarkSurfaceVariant,
-                    focusedBorderColor = primaryAccent,
-                    unfocusedBorderColor = BorderSubtle,
-                    focusedLabelColor = primaryAccent,
-                    unfocusedLabelColor = TextSecondary,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary,
-                ),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Next
-                ),
-                modifier = Modifier.fillMaxWidth()
+                }
             )
 
             if (amountError != null) {

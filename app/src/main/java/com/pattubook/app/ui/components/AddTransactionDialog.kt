@@ -3,6 +3,8 @@ package com.pattubook.app.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,7 +48,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -86,7 +87,7 @@ fun AddTransactionDialog(
     }
     var personDropdownExpanded by remember { mutableStateOf(false) }
 
-    var amountInput by remember { mutableStateOf("") }
+    var amountExpression by remember { mutableStateOf("") }
     var noteInput by remember { mutableStateOf("") }
     var selectedTimestamp by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
@@ -110,7 +111,7 @@ fun AddTransactionDialog(
             personError = null
         }
 
-        val parsedPaise = AmountInputUtil.parseRupeesToPaise(amountInput)
+        val parsedPaise = AmountInputUtil.parseAdditionExpressionToPaise(amountExpression)
         if (parsedPaise == null || parsedPaise <= 0) {
             amountError = "Enter a valid positive amount (e.g. 500 or 25.50)"
             isValid = false
@@ -234,6 +235,7 @@ fun AddTransactionDialog(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
                 .background(DarkSurface)
+                .verticalScroll(rememberScrollState())
                 .padding(20.dp)
         ) {
             Text(
@@ -329,33 +331,18 @@ fun AddTransactionDialog(
                 Spacer(modifier = Modifier.height(14.dp))
             }
 
-            // Amount Field
-            OutlinedTextField(
-                value = amountInput,
-                onValueChange = {
-                    amountInput = it
+            AmountExpressionInput(
+                expression = amountExpression,
+                accent = primaryAccent,
+                onKeyPress = { key ->
+                    amountExpression = when (key) {
+                        '+' -> AmountInputUtil.appendAdditionOperator(amountExpression)
+                        '.' -> AmountInputUtil.appendDecimalPoint(amountExpression)
+                        '\b' -> AmountInputUtil.removeLastInputCharacter(amountExpression)
+                        else -> AmountInputUtil.appendDigit(amountExpression, key)
+                    }
                     if (amountError != null) amountError = null
-                },
-                label = { Text("Amount (₹)") },
-                prefix = { Text("₹ ", color = TextPrimary, fontWeight = FontWeight.Bold) },
-                singleLine = true,
-                isError = amountError != null,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = DarkSurfaceVariant,
-                    unfocusedContainerColor = DarkSurfaceVariant,
-                    errorContainerColor = DarkSurfaceVariant,
-                    focusedBorderColor = primaryAccent,
-                    unfocusedBorderColor = BorderSubtle,
-                    focusedLabelColor = primaryAccent,
-                    unfocusedLabelColor = TextSecondary,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary,
-                ),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Next
-                ),
-                modifier = Modifier.fillMaxWidth()
+                }
             )
 
             if (amountError != null) {

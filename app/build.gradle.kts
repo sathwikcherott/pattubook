@@ -58,6 +58,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.biometric)
+    implementation(libs.androidx.fragment)
     implementation(libs.androidx.glance.appwidget)
     implementation(libs.androidx.glance.material3)
 

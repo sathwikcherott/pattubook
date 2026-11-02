@@ -9,6 +9,80 @@ object AmountInputUtil {
      * Returns null if the input is invalid, zero, or negative.
      */
     fun parseRupeesToPaise(input: String): Long? {
+        return parseRupeesToPaise(input, allowZero = false)
+    }
+
+    /**
+     * Parses an addition-only amount expression to exact paise. Empty operands, trailing operators,
+     * invalid decimals, negative amounts, and totals that overflow Long are rejected.
+     */
+    fun parseAdditionExpressionToPaise(expression: String): Long? {
+        if (expression.isBlank()) return null
+
+        val operands = expression.split('+')
+        if (operands.any { it.isBlank() }) return null
+
+        var totalPaise = 0L
+        for (operand in operands) {
+            val operandPaise = parseRupeesToPaise(operand, allowZero = true) ?: return null
+            totalPaise = try {
+                Math.addExact(totalPaise, operandPaise)
+            } catch (_: ArithmeticException) {
+                return null
+            }
+        }
+        return totalPaise.takeIf { it > 0L }
+    }
+
+    /** Returns a subtotal while the user is entering an expression such as `58+`. */
+    fun previewAdditionExpressionToPaise(expression: String): Long? {
+        if (expression.isBlank()) return null
+
+        val operands = expression.split('+')
+        val hasTrailingOperator = expression.endsWith('+')
+        val completedOperandCount = if (hasTrailingOperator) operands.size - 1 else operands.size
+        if (completedOperandCount <= 0 || operands.take(completedOperandCount).any { it.isBlank() }) {
+            return null
+        }
+
+        var totalPaise = 0L
+        for (index in 0 until completedOperandCount) {
+            val operandPaise = parseRupeesToPaise(operands[index], allowZero = true) ?: return null
+            totalPaise = try {
+                Math.addExact(totalPaise, operandPaise)
+            } catch (_: ArithmeticException) {
+                return null
+            }
+        }
+        return totalPaise
+    }
+
+    fun appendDigit(expression: String, digit: Char): String {
+        if (digit !in '0'..'9') return expression
+        val currentOperand = expression.substringAfterLast('+')
+        if (currentOperand.substringAfter('.', "").length >= 2 && currentOperand.contains('.')) {
+            return expression
+        }
+        return expression + digit
+    }
+
+    fun appendDecimalPoint(expression: String): String {
+        val currentOperand = expression.substringAfterLast('+')
+        if (currentOperand.contains('.')) return expression
+        return if (currentOperand.isEmpty()) expression + "0." else expression + "."
+    }
+
+    fun appendAdditionOperator(expression: String): String {
+        val currentOperand = expression.substringAfterLast('+')
+        if (parseRupeesToPaise(currentOperand, allowZero = true) == null) return expression
+        return expression + "+"
+    }
+
+    fun removeLastInputCharacter(expression: String): String = expression.dropLast(1)
+
+    fun formatAdditionExpression(expression: String): String = expression.replace("+", " + ")
+
+    private fun parseRupeesToPaise(input: String, allowZero: Boolean): Long? {
         val trimmed = input.trim()
         if (trimmed.isEmpty()) return null
 
@@ -36,7 +110,7 @@ object AmountInputUtil {
         } catch (_: ArithmeticException) {
             return null
         }
-        return if (totalPaise > 0L) totalPaise else null
+        return if (totalPaise > 0L || (allowZero && totalPaise == 0L)) totalPaise else null
     }
 
     /**

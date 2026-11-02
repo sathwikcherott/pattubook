@@ -8,6 +8,7 @@ import com.pattubook.app.data.local.entity.LedgerEntry
 import com.pattubook.app.data.local.entity.LedgerEntryType
 import com.pattubook.app.data.local.entity.Person
 import com.pattubook.app.data.repository.PattubookRepository
+import com.pattubook.app.ui.util.AmountInputUtil
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -95,5 +96,62 @@ class PattubookDatabaseTest {
         database.personDao().setPersonDeleted(personId, false)
         assertTrue(repository.restoreDeletedEntry(entryId).isSuccess)
         assertFalse(database.ledgerEntryDao().getEntryById(entryId)!!.isDeleted)
+    }
+
+    @Test
+    fun calculatedExpressionIsSavedAsOneEntryAndCanBeUndone() = runBlocking {
+        val personId = database.personDao().insertPerson(Person(name = "Expression"))
+        val repository = PattubookRepository(
+            personDao = database.personDao(),
+            ledgerEntryDao = database.ledgerEntryDao(),
+            database = database,
+        )
+        val amountPaise = AmountInputUtil.parseAdditionExpressionToPaise("58+56")!!
+
+        val entryId = repository.addMoneyGiven(
+            personId = personId,
+            amountPaise = amountPaise,
+            timestamp = 1_000L,
+            note = "Combined amount",
+        ).getOrThrow()
+
+        val savedEntries = database.ledgerEntryDao().observeEntriesForPerson(personId).first()
+        assertEquals(1, savedEntries.size)
+        assertEquals(11_400L, savedEntries.single().amountPaise)
+        assertEquals("Combined amount", savedEntries.single().note)
+
+        val undoneEntry = repository.undoLastLedgerEntry(personId).getOrThrow()
+        assertEquals(entryId, undoneEntry.id)
+        assertTrue(database.ledgerEntryDao().getEntryById(entryId)!!.isDeleted)
+    }
+
+    @Test
+    fun editingEntryWithExpressionTotalPreservesItsOtherLedgerFields() = runBlocking {
+        val personId = database.personDao().insertPerson(Person(name = "Edit expression"))
+        val entryId = database.ledgerEntryDao().insertEntry(
+            LedgerEntry(
+                personId = personId,
+                amountPaise = 5_000L,
+                type = LedgerEntryType.GIVEN_BACK,
+                timestamp = 1_234L,
+                note = "Original note",
+            )
+        )
+        val repository = PattubookRepository(
+            personDao = database.personDao(),
+            ledgerEntryDao = database.ledgerEntryDao(),
+            database = database,
+        )
+        val existingEntry = database.ledgerEntryDao().getEntryById(entryId)!!
+        val calculatedPaise = AmountInputUtil.parseAdditionExpressionToPaise("10.50+20.25")!!
+
+        assertTrue(repository.updateEntry(existingEntry.copy(amountPaise = calculatedPaise)).isSuccess)
+
+        val updatedEntry = database.ledgerEntryDao().getEntryById(entryId)!!
+        assertEquals(3_075L, updatedEntry.amountPaise)
+        assertEquals(personId, updatedEntry.personId)
+        assertEquals(LedgerEntryType.GIVEN_BACK, updatedEntry.type)
+        assertEquals(1_234L, updatedEntry.timestamp)
+        assertEquals("Original note", updatedEntry.note)
     }
 }
