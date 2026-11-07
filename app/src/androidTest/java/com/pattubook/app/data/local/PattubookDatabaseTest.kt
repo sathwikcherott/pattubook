@@ -1,6 +1,7 @@
 package com.pattubook.app.data.local
 
 import android.content.Context
+import android.graphics.Bitmap
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -9,6 +10,7 @@ import com.pattubook.app.data.local.entity.LedgerEntryType
 import com.pattubook.app.data.local.entity.Person
 import com.pattubook.app.data.repository.PattubookRepository
 import com.pattubook.app.ui.util.AmountInputUtil
+import com.pattubook.app.ui.util.ProfilePhotoManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -182,5 +184,20 @@ class PattubookDatabaseTest {
         assertTrue(jsonResult.isSuccess)
         val jsonString = jsonResult.getOrThrow()
         assertTrue(jsonString.contains("profile_photos/person_456.jpg"))
+    }
+
+    @Test
+    fun interactiveCropSquareBitmapProducesTargetSquareResolution() = runBlocking {
+        val sourceBitmap = Bitmap.createBitmap(800, 600, Bitmap.Config.ARGB_8888)
+        val cropped = ProfilePhotoManager.cropSquareBitmap(
+            sourceBitmap = sourceBitmap,
+            panX = 0f,
+            panY = 0f,
+            userScale = 1.0f,
+            viewportSizePx = 300f,
+            targetSizePx = 512
+        )
+        assertEquals(512, cropped.width)
+        assertEquals(512, cropped.height)
     }
 }

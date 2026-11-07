@@ -93,13 +93,13 @@ object ProfilePhotoManager {
     }
 
     /**
-     * Safely decodes an image Uri (content:// or file://) off the main thread,
-     * downsamples large images, applies EXIF orientation, and crops into a square Bitmap.
+     * Decodes an image Uri (content:// or file://) off the main thread into a high-resolution software Bitmap,
+     * downsampling large images (up to maxDimension = 2048) and applying EXIF orientation fixes.
      */
-    suspend fun decodeAndCropUriToSquareBitmap(
+    suspend fun decodeFullBitmapFromUri(
         context: Context,
         uri: Uri,
-        maxDimension: Int = MAX_IMAGE_DIMENSION
+        maxDimension: Int = 2048
     ): Bitmap? = withContext(Dispatchers.IO) {
         var decodedBitmap: Bitmap? = null
 
@@ -107,7 +107,7 @@ object ProfilePhotoManager {
         try {
             val source = ImageDecoder.createSource(context.contentResolver, uri)
             decodedBitmap = ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
-                // CRITICAL: Force software allocator so bitmap can be cropped and compressed to JPEG without crashing
+                // Force software allocator so bitmap can be cropped and compressed to JPEG without crashing
                 decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
 
                 val width = info.size.width
@@ -141,7 +141,7 @@ object ProfilePhotoManager {
         }
 
         try {
-            // Apply EXIF rotation if needed (for BitmapFactory fallback or if ImageDecoder didn't rotate)
+            // Apply EXIF rotation if needed
             val rotationDegrees = getExifOrientationDegrees(context, uri)
             if (rotationDegrees != 0) {
                 val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
@@ -155,27 +155,87 @@ object ProfilePhotoManager {
                     decodedBitmap = rotated
                 }
             }
-
-            // Center-crop to 1:1 square
-            val squareBitmap = cropToCenterSquare(decodedBitmap)
-            if (squareBitmap != decodedBitmap && !decodedBitmap.isRecycled) {
-                decodedBitmap.recycle()
-            }
-
-            // Rescale down to maxDimension if larger
-            if (squareBitmap.width > maxDimension || squareBitmap.height > maxDimension) {
-                val scaled = Bitmap.createScaledBitmap(squareBitmap, maxDimension, maxDimension, true)
-                if (scaled != squareBitmap) {
-                    squareBitmap.recycle()
-                    return@withContext scaled
-                }
-            }
-
-            squareBitmap
+            decodedBitmap
         } catch (e: Exception) {
-            Log.e(TAG, "Error cropping/processing bitmap for Uri: scheme=${uri.scheme}, auth=${uri.authority}", e)
+            Log.e(TAG, "Error applying EXIF rotation for Uri: scheme=${uri.scheme}, auth=${uri.authority}", e)
             null
         }
+    }
+
+    /**
+     * Crops a 1:1 square region from [sourceBitmap] based on interactive user viewport parameters
+     * ([panX], [panY], [userScale], [viewportSizePx]) and rescales to [targetSizePx] (default 512x512).
+     */
+    suspend fun cropSquareBitmap(
+        sourceBitmap: Bitmap,
+        panX: Float,
+        panY: Float,
+        userScale: Float,
+        viewportSizePx: Float,
+        targetSizePx: Int = 512
+    ): Bitmap = withContext(Dispatchers.IO) {
+        val imgWidth = sourceBitmap.width.toFloat()
+        val imgHeight = sourceBitmap.height.toFloat()
+
+        val baseScale = viewportSizePx / min(imgWidth, imgHeight)
+        val totalScale = baseScale * kotlin.math.max(1.0f, userScale)
+
+        val dispWidth = imgWidth * totalScale
+        val dispHeight = imgHeight * totalScale
+
+        val dispCropCenterX = (dispWidth / 2f) - panX
+        val dispCropCenterY = (dispHeight / 2f) - panY
+
+        val dispCropLeft = dispCropCenterX - (viewportSizePx / 2f)
+        val dispCropTop = dispCropCenterY - (viewportSizePx / 2f)
+
+        val bitmapCropLeft = (dispCropLeft / totalScale).toInt().coerceIn(0, (imgWidth - 1).toInt())
+        val bitmapCropTop = (dispCropTop / totalScale).toInt().coerceIn(0, (imgHeight - 1).toInt())
+
+        val bitmapCropSize = (viewportSizePx / totalScale).toInt()
+            .coerceIn(1, min((imgWidth - bitmapCropLeft).toInt(), (imgHeight - bitmapCropTop).toInt()))
+
+        val cropped = Bitmap.createBitmap(
+            sourceBitmap,
+            bitmapCropLeft,
+            bitmapCropTop,
+            bitmapCropSize,
+            bitmapCropSize
+        )
+
+        if (cropped.width != targetSizePx || cropped.height != targetSizePx) {
+            val scaled = Bitmap.createScaledBitmap(cropped, targetSizePx, targetSizePx, true)
+            if (scaled != cropped && !cropped.isRecycled) {
+                cropped.recycle()
+            }
+            scaled
+        } else {
+            cropped
+        }
+    }
+
+    /**
+     * Safely decodes an image Uri (content:// or file://) off the main thread,
+     * downsamples large images, applies EXIF orientation, and crops into a square Bitmap.
+     */
+    suspend fun decodeAndCropUriToSquareBitmap(
+        context: Context,
+        uri: Uri,
+        maxDimension: Int = MAX_IMAGE_DIMENSION
+    ): Bitmap? = withContext(Dispatchers.IO) {
+        val fullBitmap = decodeFullBitmapFromUri(context, uri, maxDimension) ?: return@withContext null
+        val squareBitmap = cropToCenterSquare(fullBitmap)
+        if (squareBitmap != fullBitmap && !fullBitmap.isRecycled) {
+            fullBitmap.recycle()
+        }
+        if (squareBitmap.width > maxDimension || squareBitmap.height > maxDimension) {
+            val scaled = Bitmap.createScaledBitmap(squareBitmap, maxDimension, maxDimension, true)
+            if (scaled != squareBitmap) {
+                squareBitmap.recycle()
+                return@withContext scaled
+            }
+        }
+        squareBitmap
     }
 
     private fun decodeBitmapViaFileDescriptor(
