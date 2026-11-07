@@ -11,4 +11,5 @@ data class Person(
     val createdAt: Long = System.currentTimeMillis(),
     val isHidden: Boolean = false,
     val isDeleted: Boolean = false,
+    val photoPath: String? = null,
 )

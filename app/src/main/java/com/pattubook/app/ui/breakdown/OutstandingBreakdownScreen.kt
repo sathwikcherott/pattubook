@@ -39,6 +39,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pattubook.app.data.local.entity.Person
+import com.pattubook.app.ui.components.PersonAvatar
 import com.pattubook.app.ui.theme.AccentGreen
 import com.pattubook.app.ui.theme.AccentGreenContainer
 import com.pattubook.app.ui.theme.BorderSubtle
@@ -214,7 +215,6 @@ fun OutstandingBreakdownScreen(
                             val percentageInt = (progressFraction * 100).toInt()
 
                             val cardShape = RoundedCornerShape(18.dp)
-                            val initialLetter = person.name.trim().take(1).uppercase()
 
                             Box(
                                 modifier = Modifier
@@ -235,20 +235,11 @@ fun OutstandingBreakdownScreen(
                                             verticalAlignment = Alignment.CenterVertically,
                                             modifier = Modifier.weight(1f)
                                         ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(42.dp)
-                                                    .clip(CircleShape)
-                                                    .background(AccentGreenContainer),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = initialLetter,
-                                                    style = MaterialTheme.typography.titleMedium,
-                                                    color = AccentGreen,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
+                                            PersonAvatar(
+                                                personName = person.name,
+                                                photoPath = person.photoPath,
+                                                modifier = Modifier.size(42.dp)
+                                            )
 
                                             Spacer(modifier = Modifier.width(12.dp))
 

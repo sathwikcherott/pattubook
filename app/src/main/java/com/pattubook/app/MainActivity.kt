@@ -166,8 +166,11 @@ class MainActivity : FragmentActivity() {
                                 onPersonClick = { personId ->
                                     navController.navigate("person_detail/$personId")
                                 },
-                                onAddPersonConfirm = { name ->
-                                    peopleViewModel.addPerson(name)
+                                onAddPersonConfirm = { name, photoPath ->
+                                    peopleViewModel.addPerson(name, photoPath)
+                                },
+                                onEditPersonConfirm = { person, updatedName, newPhotoPath, isPhotoRemoved ->
+                                    peopleViewModel.updatePerson(person.copy(name = updatedName), newPhotoPath, isPhotoRemoved)
                                 },
                                 onGiveMoneyConfirm = { personId, amountPaise, note, timestamp ->
                                     peopleViewModel.addMoneyGiven(personId, amountPaise, note, timestamp)
@@ -366,6 +369,9 @@ class MainActivity : FragmentActivity() {
                                 },
                                 onEditTransactionConfirm = { updatedEntry ->
                                     detailViewModel.updateEntry(updatedEntry)
+                                },
+                                onUpdatePerson = { name, newPhotoPath, isPhotoRemoved ->
+                                    detailViewModel.updatePerson(name, newPhotoPath, isPhotoRemoved)
                                 },
                                 eventFlow = detailViewModel.eventFlow,
                             )

@@ -270,6 +270,14 @@ fun AddTransactionDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         val personName = selectedPerson?.name ?: "Select Person"
+                        if (selectedPerson != null) {
+                            PersonAvatar(
+                                personName = selectedPerson!!.name,
+                                photoPath = selectedPerson!!.photoPath,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                        }
                         Text(
                             text = personName,
                             style = MaterialTheme.typography.bodyLarge,
@@ -296,6 +304,12 @@ fun AddTransactionDialog(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
+                                        PersonAvatar(
+                                            personName = p.name,
+                                            photoPath = p.photoPath,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
                                         Text(
                                             text = p.name,
                                             style = MaterialTheme.typography.bodyLarge,

@@ -154,4 +154,33 @@ class PattubookDatabaseTest {
         assertEquals(1_234L, updatedEntry.timestamp)
         assertEquals("Original note", updatedEntry.note)
     }
+
+    @Test
+    fun personWithPhotoPathIsSavedUpdatedAndPreservedInBackup() = runBlocking {
+        val repository = PattubookRepository(
+            personDao = database.personDao(),
+            ledgerEntryDao = database.ledgerEntryDao(),
+            database = database,
+        )
+
+        val photoPath = "profile_photos/person_123.jpg"
+        val personId = repository.addPerson("John Doe", photoPath).getOrThrow()
+
+        val person = database.personDao().getPersonById(personId)!!
+        assertEquals("John Doe", person.name)
+        assertEquals(photoPath, person.photoPath)
+
+        val newPhotoPath = "profile_photos/person_456.jpg"
+        val updateResult = repository.updatePerson(person.copy(name = "John Smith", photoPath = newPhotoPath))
+        assertTrue(updateResult.isSuccess)
+
+        val updatedPerson = database.personDao().getPersonById(personId)!!
+        assertEquals("John Smith", updatedPerson.name)
+        assertEquals(newPhotoPath, updatedPerson.photoPath)
+
+        val jsonResult = repository.generateBackupJson()
+        assertTrue(jsonResult.isSuccess)
+        val jsonString = jsonResult.getOrThrow()
+        assertTrue(jsonString.contains("profile_photos/person_456.jpg"))
+    }
 }

@@ -1,19 +1,31 @@
 package com.pattubook.app.ui.components
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -26,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.tooling.preview.Preview
@@ -43,18 +56,39 @@ import com.pattubook.app.ui.theme.TextSecondary
 @Composable
 fun AddPersonDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String) -> Unit,
+    onConfirm: (name: String, photoPath: String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var name by remember { mutableStateOf("") }
+    var photoPath by remember { mutableStateOf<String?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var pendingPhotoUri by remember { mutableStateOf<Uri?>(null) }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            pendingPhotoUri = uri
+        }
+    }
+
+    pendingPhotoUri?.let { uri ->
+        CropPhotoDialog(
+            imageUri = uri,
+            onDismiss = { pendingPhotoUri = null },
+            onPhotoCropped = { savedPath ->
+                photoPath = savedPath
+                pendingPhotoUri = null
+            }
+        )
+    }
 
     fun submit() {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) {
             errorMessage = "Name cannot be empty"
         } else {
-            onConfirm(trimmed)
+            onConfirm(trimmed, photoPath)
         }
     }
 
@@ -64,13 +98,88 @@ fun AddPersonDialog(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
                 .background(DarkSurface)
-                .padding(20.dp)
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = "Add Person",
                 style = MaterialTheme.typography.titleLarge,
-                color = TextPrimary
+                color = TextPrimary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.Start)
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            PersonAvatar(
+                personName = name.ifBlank { "?" },
+                photoPath = photoPath,
+                modifier = Modifier.size(80.dp),
+                textStyle = MaterialTheme.typography.headlineMedium
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Photo Action (Add Photo / Change Photo / Remove Photo)
+            if (photoPath == null) {
+                OutlinedButton(
+                    onClick = {
+                        photoPickerLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, AccentGreen)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Add Photo",
+                        tint = AccentGreen,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Add Photo", color = AccentGreen, style = MaterialTheme.typography.labelLarge)
+                }
+            } else {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Change Photo",
+                            tint = TextPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Change", color = TextPrimary, style = MaterialTheme.typography.labelMedium)
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    TextButton(
+                        onClick = { photoPath = null }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Remove Photo",
+                            tint = AccentRed,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Remove", color = AccentRed, style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -107,7 +216,8 @@ fun AddPersonDialog(
                 Text(
                     text = errorMessage!!,
                     style = MaterialTheme.typography.bodySmall,
-                    color = AccentRed
+                    color = AccentRed,
+                    modifier = Modifier.align(Alignment.Start)
                 )
             }
 
@@ -135,13 +245,26 @@ fun AddPersonDialog(
     }
 }
 
+@Composable
+fun AddPersonDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AddPersonDialog(
+        onDismiss = onDismiss,
+        onConfirm = { name, _ -> onConfirm(name) },
+        modifier = modifier
+    )
+}
+
 @Preview
 @Composable
 fun AddPersonDialogPreview() {
     PattubookTheme {
         AddPersonDialog(
             onDismiss = {},
-            onConfirm = {}
+            onConfirm = { _, _ -> }
         )
     }
 }

@@ -51,6 +51,7 @@ import androidx.compose.ui.window.Dialog
 import com.pattubook.app.data.local.entity.LedgerEntry
 import com.pattubook.app.data.local.entity.LedgerEntryType
 import com.pattubook.app.data.local.entity.Person
+import com.pattubook.app.ui.components.PersonAvatar
 import com.pattubook.app.ui.theme.AccentBlue
 import com.pattubook.app.ui.theme.AccentBlueContainer
 import com.pattubook.app.ui.theme.AccentGreen
@@ -274,7 +275,6 @@ fun RecycleBinScreen(
                             ) { person ->
                                 val balance = uiState.outstandingBalancePaiseByPerson[person.id] ?: 0L
                                 val cardShape = RoundedCornerShape(18.dp)
-                                val initialLetter = person.name.trim().take(1).uppercase()
 
                                 Box(
                                     modifier = Modifier
@@ -294,20 +294,11 @@ fun RecycleBinScreen(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 modifier = Modifier.weight(1f)
                                             ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(42.dp)
-                                                        .clip(CircleShape)
-                                                        .background(AccentGreenContainer),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Text(
-                                                        text = initialLetter,
-                                                        style = MaterialTheme.typography.titleMedium,
-                                                        color = AccentGreen,
-                                                        fontWeight = FontWeight.Bold
-                                                    )
-                                                }
+                                                PersonAvatar(
+                                                    personName = person.name,
+                                                    photoPath = person.photoPath,
+                                                    modifier = Modifier.size(42.dp)
+                                                )
 
                                                 Spacer(modifier = Modifier.width(12.dp))
 

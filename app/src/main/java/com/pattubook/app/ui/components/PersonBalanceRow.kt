@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.DropdownMenu
@@ -65,12 +66,12 @@ fun PersonBalanceRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     latestActivityTimestamp: Long? = null,
+    onEditClick: () -> Unit = {},
     onHideClick: () -> Unit = {},
     onUnhideClick: () -> Unit = {},
     onDeleteClick: () -> Unit = {},
 ) {
     val cardShape = RoundedCornerShape(18.dp)
-    val initialLetter = person.name.trim().take(1).uppercase().ifEmpty { "?" }
     var dropdownExpanded by remember { mutableStateOf(false) }
 
     val (statusLabel, statusColor, statusContainer) = when {
@@ -110,21 +111,14 @@ fun PersonBalanceRow(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.weight(1f)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(statusContainer)
-                        .border(1.dp, statusColor.copy(alpha = 0.35f), CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = initialLetter,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = statusColor,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                PersonAvatar(
+                    personName = person.name,
+                    photoPath = person.photoPath,
+                    modifier = Modifier.size(48.dp),
+                    backgroundColor = statusContainer,
+                    textColor = statusColor,
+                    borderColor = statusColor.copy(alpha = 0.35f)
+                )
 
                 Spacer(modifier = Modifier.width(14.dp))
 
@@ -233,6 +227,30 @@ fun PersonBalanceRow(
             onDismissRequest = { dropdownExpanded = false },
             modifier = Modifier.background(DarkSurfaceVariant)
         ) {
+            DropdownMenuItem(
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Person",
+                            tint = TextPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Edit Person",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                },
+                onClick = {
+                    dropdownExpanded = false
+                    onEditClick()
+                }
+            )
+
             if (person.isHidden) {
                 DropdownMenuItem(
                     text = {

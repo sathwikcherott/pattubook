@@ -111,6 +111,32 @@ class PersonDetailViewModel(
         }
     }
 
+    fun updatePerson(name: String, newPhotoPath: String? = null, isPhotoRemoved: Boolean = false) {
+        val currentPerson = uiState.value.person ?: return
+        viewModelScope.launch {
+            val oldPhotoPath = currentPerson.photoPath
+            val (updatedPerson, oldPhotoToDelete) = when {
+                isPhotoRemoved -> {
+                    currentPerson.copy(name = name, photoPath = null) to oldPhotoPath
+                }
+                newPhotoPath != null -> {
+                    val oldPath = if (oldPhotoPath != newPhotoPath) oldPhotoPath else null
+                    currentPerson.copy(name = name, photoPath = newPhotoPath) to oldPath
+                }
+                else -> {
+                    currentPerson.copy(name = name) to null
+                }
+            }
+
+            val result = repository.updatePerson(updatedPerson, oldPhotoToDelete)
+            result.onFailure { throwable ->
+                val userMsg = throwable.message ?: "Failed to update person."
+                _errorMessage.value = userMsg
+                _eventChannel.send(PersonDetailUiEvent.Error(userMsg))
+            }
+        }
+    }
+
     fun undoLastLedgerEntry() {
         viewModelScope.launch {
             val result = repository.undoLastLedgerEntry(personId)

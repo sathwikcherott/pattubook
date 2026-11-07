@@ -9,6 +9,7 @@ import com.pattubook.app.data.local.dao.PersonDao
 import com.pattubook.app.data.local.entity.LedgerEntry
 import com.pattubook.app.data.local.entity.LedgerEntryType
 import com.pattubook.app.data.local.entity.Person
+import com.pattubook.app.ui.util.ProfilePhotoManager
 import com.pattubook.app.widget.PattubookWidgetUpdater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -43,7 +44,7 @@ class PattubookRepository(
 
     suspend fun getPersonById(id: Long): Person? = personDao.getPersonById(id)
 
-    suspend fun addPerson(name: String): Result<Long> {
+    suspend fun addPerson(name: String, photoPath: String? = null): Result<Long> {
         val trimmedName = name.trim()
         if (trimmedName.isEmpty()) {
             return Result.failure(IllegalArgumentException("Person name cannot be empty or whitespace."))
@@ -52,6 +53,7 @@ class PattubookRepository(
         val person = Person(
             name = trimmedName,
             createdAt = System.currentTimeMillis(),
+            photoPath = photoPath,
         )
         return try {
             val id = personDao.insertPerson(person)
@@ -62,7 +64,7 @@ class PattubookRepository(
         }
     }
 
-    suspend fun updatePerson(person: Person): Result<Unit> {
+    suspend fun updatePerson(person: Person, oldPhotoPathToDelete: String? = null): Result<Unit> {
         val trimmedName = person.name.trim()
         if (trimmedName.isEmpty()) {
             return Result.failure(IllegalArgumentException("Person name cannot be empty or whitespace."))
@@ -71,6 +73,9 @@ class PattubookRepository(
         val updatedPerson = person.copy(name = trimmedName)
         return try {
             personDao.updatePerson(updatedPerson)
+            if (oldPhotoPathToDelete != null && context != null) {
+                ProfilePhotoManager.deletePhotoFile(context, oldPhotoPathToDelete)
+            }
             notifyWidgetUpdate()
             Result.success(Unit)
         } catch (e: Exception) {
@@ -112,6 +117,9 @@ class PattubookRepository(
         val deleteOp: suspend () -> Result<Unit> = {
             ledgerEntryDao.deleteEntriesForPerson(person.id)
             personDao.deletePerson(person)
+            if (person.photoPath != null && context != null) {
+                ProfilePhotoManager.deletePhotoFile(context, person.photoPath)
+            }
             notifyWidgetUpdate()
             Result.success(Unit)
         }
@@ -128,8 +136,16 @@ class PattubookRepository(
 
     suspend fun emptyRecycleBin(): Result<Unit> {
         val emptyOp: suspend () -> Result<Unit> = {
+            val deletedPeople = personDao.getAllPeopleOnce().filter { it.isDeleted }
             ledgerEntryDao.emptyRecycleBinEntries()
             personDao.emptyRecycleBinPeople()
+            if (context != null) {
+                for (person in deletedPeople) {
+                    if (person.photoPath != null) {
+                        ProfilePhotoManager.deletePhotoFile(context, person.photoPath)
+                    }
+                }
+            }
             notifyWidgetUpdate()
             Result.success(Unit)
         }
@@ -465,6 +481,9 @@ class PattubookRepository(
         val deleteOperation: suspend () -> Result<Unit> = {
             ledgerEntryDao.deleteAllEntries()
             personDao.deleteAllPeople()
+            if (context != null) {
+                ProfilePhotoManager.clearAllPhotos(context)
+            }
             notifyWidgetUpdate()
             Result.success(Unit)
         }
@@ -508,6 +527,11 @@ class PattubookRepository(
                     personObj.put("createdAt", person.createdAt)
                     personObj.put("isHidden", person.isHidden)
                     personObj.put("isDeleted", person.isDeleted)
+                    if (person.photoPath != null) {
+                        personObj.put("photoPath", person.photoPath)
+                    } else {
+                        personObj.put("photoPath", JSONObject.NULL)
+                    }
                     peopleArray.put(personObj)
                 }
                 root.put("people", peopleArray)
@@ -597,6 +621,7 @@ class PattubookRepository(
                     val createdAt = pObj.getLong("createdAt")
                     val isHidden = pObj.optBoolean("isHidden", false)
                     val isDeleted = pObj.optBoolean("isDeleted", false)
+                    val photoPath = if (pObj.isNull("photoPath")) null else pObj.optString("photoPath").trim().ifEmpty { null }
 
                     if (name.isEmpty()) {
                         return@withContext Result.failure(IllegalArgumentException("Invalid backup: Person with ID $id has a blank name."))
@@ -613,6 +638,7 @@ class PattubookRepository(
                             createdAt = createdAt,
                             isHidden = isHidden,
                             isDeleted = isDeleted,
+                            photoPath = photoPath,
                         )
                     )
                 }

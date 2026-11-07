@@ -56,6 +56,7 @@ import com.pattubook.app.data.local.entity.Person
 import com.pattubook.app.ui.components.AddPersonDialog
 import com.pattubook.app.ui.components.AddTransactionDialog
 import com.pattubook.app.ui.components.DeletePersonDialog
+import com.pattubook.app.ui.components.EditPersonDialog
 import com.pattubook.app.ui.components.EmptyFilterState
 import com.pattubook.app.ui.components.EmptySearchState
 import com.pattubook.app.ui.components.EmptyState
@@ -119,7 +120,7 @@ internal fun filterPeopleForHome(
 fun HomeScreen(
     uiState: PeopleUiState,
     onPersonClick: (Long) -> Unit,
-    onAddPersonConfirm: (String) -> Unit,
+    onAddPersonConfirm: (name: String, photoPath: String?) -> Unit,
     onGiveMoneyConfirm: (personId: Long, amountPaise: Long, note: String?, timestamp: Long) -> Unit,
     onRecordReturnConfirm: (personId: Long, amountPaise: Long, note: String?, timestamp: Long) -> Unit,
     modifier: Modifier = Modifier,
@@ -128,6 +129,7 @@ fun HomeScreen(
     onHidePersonConfirm: (Person) -> Unit = {},
     onUnhidePersonConfirm: (Person) -> Unit = {},
     onDeletePersonConfirm: (Person) -> Unit = {},
+    onEditPersonConfirm: (person: Person, name: String, newPhotoPath: String?, isPhotoRemoved: Boolean) -> Unit = { _, _, _, _ -> },
 ) {
     var selectedNavDestination by remember { mutableStateOf(NavDestination.HOME) }
     var showAddPersonDialog by remember { mutableStateOf(false) }
@@ -137,6 +139,7 @@ fun HomeScreen(
     var selectedFilter by remember { mutableStateOf(PeopleFilterOption.ALL) }
     var filterMenuExpanded by remember { mutableStateOf(false) }
 
+    var personToEdit by remember { mutableStateOf<Person?>(null) }
     var personToHide by remember { mutableStateOf<Person?>(null) }
     var personToUnhide by remember { mutableStateOf<Person?>(null) }
     var personToDelete by remember { mutableStateOf<Person?>(null) }
@@ -217,12 +220,23 @@ fun HomeScreen(
         )
     }
 
+    personToEdit?.let { person ->
+        EditPersonDialog(
+            person = person,
+            onDismiss = { personToEdit = null },
+            onConfirm = { updatedName, newPhotoPath, isPhotoRemoved ->
+                personToEdit = null
+                onEditPersonConfirm(person, updatedName, newPhotoPath, isPhotoRemoved)
+            }
+        )
+    }
+
     if (showAddPersonDialog) {
         AddPersonDialog(
             onDismiss = { showAddPersonDialog = false },
-            onConfirm = { name ->
+            onConfirm = { name, photoPath ->
                 showAddPersonDialog = false
-                onAddPersonConfirm(name)
+                onAddPersonConfirm(name, photoPath)
             }
         )
     }
@@ -569,6 +583,7 @@ fun HomeScreen(
                         outstandingBalancePaise = personBalance,
                         latestActivityTimestamp = latestTimestamp,
                         onClick = { onPersonClick(person.id) },
+                        onEditClick = { personToEdit = person },
                         onHideClick = { personToHide = person },
                         onUnhideClick = { personToUnhide = person },
                         onDeleteClick = { personToDelete = person }
@@ -672,7 +687,7 @@ fun HomeScreenPreview() {
                 isLoading = false,
             ),
             onPersonClick = {},
-            onAddPersonConfirm = {},
+            onAddPersonConfirm = { _, _ -> },
             onGiveMoneyConfirm = { _, _, _, _ -> },
             onRecordReturnConfirm = { _, _, _, _ -> }
         )
@@ -686,7 +701,7 @@ fun HomeScreenEmptyPreview() {
         HomeScreen(
             uiState = PeopleUiState(people = emptyList()),
             onPersonClick = {},
-            onAddPersonConfirm = {},
+            onAddPersonConfirm = { _, _ -> },
             onGiveMoneyConfirm = { _, _, _, _ -> },
             onRecordReturnConfirm = { _, _, _, _ -> }
         )

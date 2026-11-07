@@ -87,9 +87,9 @@ class PeopleViewModel(
         initialValue = PeopleUiState(isLoading = true),
     )
 
-    fun addPerson(name: String) {
+    fun addPerson(name: String, photoPath: String? = null) {
         viewModelScope.launch {
-            val result = repository.addPerson(name)
+            val result = repository.addPerson(name, photoPath)
             result.onSuccess { personId ->
                 _eventChannel.send(PeopleUiEvent.PersonAdded(personId))
             }.onFailure { throwable ->
@@ -148,9 +148,23 @@ class PeopleViewModel(
         }
     }
 
-    fun updatePerson(person: Person) {
+    fun updatePerson(person: Person, newPhotoPath: String? = null, isPhotoRemoved: Boolean = false) {
         viewModelScope.launch {
-            val result = repository.updatePerson(person)
+            val oldPhotoPath = person.photoPath
+            val (updatedPerson, oldPhotoToDelete) = when {
+                isPhotoRemoved -> {
+                    person.copy(photoPath = null) to oldPhotoPath
+                }
+                newPhotoPath != null -> {
+                    val oldPath = if (oldPhotoPath != newPhotoPath) oldPhotoPath else null
+                    person.copy(photoPath = newPhotoPath) to oldPath
+                }
+                else -> {
+                    person to null
+                }
+            }
+
+            val result = repository.updatePerson(updatedPerson, oldPhotoToDelete)
             result.onSuccess {
                 _eventChannel.send(PeopleUiEvent.PersonUpdated)
             }.onFailure { throwable ->

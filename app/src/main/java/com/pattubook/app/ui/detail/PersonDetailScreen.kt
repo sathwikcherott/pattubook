@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -52,8 +53,10 @@ import com.pattubook.app.data.local.entity.LedgerEntryType
 import com.pattubook.app.data.local.entity.Person
 import com.pattubook.app.ui.components.AddTransactionDialog
 import com.pattubook.app.ui.components.DeleteTransactionDialog
+import com.pattubook.app.ui.components.EditPersonDialog
 import com.pattubook.app.ui.components.EditTransactionDialog
 import com.pattubook.app.ui.components.PattubookQuickActions
+import com.pattubook.app.ui.components.PersonAvatar
 import com.pattubook.app.ui.components.SwipeableTransactionRow
 import com.pattubook.app.ui.theme.AccentBlue
 import com.pattubook.app.ui.theme.AccentGreen
@@ -85,10 +88,12 @@ fun PersonDetailScreen(
     onRedoClick: () -> Unit = {},
     eventFlow: Flow<PersonDetailUiEvent>? = null,
     onSetEntryPaid: (LedgerEntry, Boolean) -> Unit = { _, _ -> },
+    onUpdatePerson: (name: String, photoPath: String?, isPhotoRemoved: Boolean) -> Unit = { _, _, _ -> },
 ) {
     var activeTransactionType by remember { mutableStateOf<LedgerEntryType?>(null) }
     var entryToEdit by remember { mutableStateOf<LedgerEntry?>(null) }
     var entryToDelete by remember { mutableStateOf<LedgerEntry?>(null) }
+    var showEditPersonDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -222,6 +227,17 @@ fun PersonDetailScreen(
         }
     }
 
+    if (showEditPersonDialog && uiState.person != null) {
+        EditPersonDialog(
+            person = uiState.person,
+            onDismiss = { showEditPersonDialog = false },
+            onConfirm = { updatedName, newPhotoPath, isPhotoRemoved ->
+                showEditPersonDialog = false
+                onUpdatePerson(updatedName, newPhotoPath, isPhotoRemoved)
+            }
+        )
+    }
+
     val personName = uiState.person?.name ?: "Person Details"
 
     Scaffold(
@@ -251,13 +267,37 @@ fun PersonDetailScreen(
 
                 Spacer(modifier = Modifier.width(4.dp))
 
+                PersonAvatar(
+                    personName = personName,
+                    photoPath = uiState.person?.photoPath,
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clickable { showEditPersonDialog = true },
+                    textStyle = MaterialTheme.typography.titleLarge
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = personName,
-                        style = MaterialTheme.typography.displayMedium,
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = personName,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                        IconButton(
+                            onClick = { showEditPersonDialog = true },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit Person",
+                                tint = TextSecondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                     Text(
                         text = "Personal lending ledger",
                         style = MaterialTheme.typography.bodySmall,
