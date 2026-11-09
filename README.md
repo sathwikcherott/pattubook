@@ -1,183 +1,90 @@
-<div align="center">
+<p align="center">
+  <img src="docs/media/pattubook-hero.svg" width="100%" alt="PattuBook, a personal lending ledger for Android. A sample ledger shows ₹540 outstanding.">
+</p>
 
-# 📒 Pattubook
+<h1 align="center">PattuBook</h1>
 
-### Your personal lending ledger.
+<p align="center">Record what you lend, log what comes back, and see what’s still outstanding for each person.</p>
 
-A private, offline-first Android app for keeping track of money you've given, received back, and still have outstanding.
+<p align="center">
+  <strong><a href="https://github.com/sathwikcherott/pattubook/releases">↓ Download APK</a></strong>
+  &nbsp;·&nbsp; <a href="#screenshots">Screenshots</a>
+  &nbsp;·&nbsp; <a href="#build-from-source">Build from source</a>
+</p>
 
-<br>
+<p align="center">
+  <kbd>Android 10+</kbd> &nbsp; <kbd>Kotlin</kbd> &nbsp; <kbd>Jetpack Compose</kbd> &nbsp; <kbd>Room</kbd>
+</p>
 
-![Android](https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white)
-![Kotlin](https://img.shields.io/badge/Kotlin-2.0%2B-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
-![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-UI-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)
-![Offline First](https://img.shields.io/badge/Offline--First-Yes-8B5CF6?style=for-the-badge)
+## Features
 
-</div>
+| | What you can do |
+| --- | --- |
+| ↗ **Record a loan** | Pick a person, enter the amount, and add a date and optional note. |
+| ↙ **Log a repayment** | Record money returned and see the outstanding balance for that person. |
+| ▤ **Review activity** | Browse the activity timeline or open a person’s ledger for their transaction history. |
+| ↶ **Correct mistakes** | Edit a transaction or recover deleted items from the Recycle Bin. |
+| ◈ **Personalize the ledger** | Hide people from the overview and enable optional device authentication. The schema 7 branch also supports profile photos with pan and zoom cropping. |
+| ↻ **Back up the ledger** | Export a local JSON copy of people and transactions and restore it when needed. |
 
----
+## The balance in motion
 
-## ✦ About
+<p align="center">
+  <img src="docs/media/ledger-motion.gif" width="900" alt="Animated sample chart. Money given stays at ₹1,200 while repayments rise to ₹660 and the outstanding balance falls to ₹540.">
+</p>
 
-**Pattubook** is a personal money-lending ledger built to make tracking informal loans simple.
+*Illustrative data. In this example, ₹1,200 given minus ₹660 returned leaves ₹540 outstanding.*
 
-Instead of trying to remember who owes what, Pattubook keeps a complete local record of:
-
-- 💸 Money given
-- ↩️ Money returned
-- 🧮 Outstanding balances
-- 📝 Transaction notes
-- 🗓️ Custom transaction dates
-- 👤 Person-specific history
-
-Everything is stored locally on the device.
-
-**No accounts. No cloud. No unnecessary complexity.**
-
----
-
-## ✨ Features
-
-### 💰 Lending Ledger
-Track every amount you've given or received back.
-
-### 👤 People
-Keep separate financial records for each person, including:
-
-- Total given
-- Total returned
-- Outstanding balance
-- Complete transaction history
-
-### 📊 Outstanding Overview
-See your total outstanding balance at a glance and break it down person-by-person.
-
-### ✏️ Transaction Editing
-Correct an existing transaction without deleting and recreating it.
-
-Edit:
-
-- Amount
-- Date & time
-- Note
-
-The original transaction identity is preserved.
-
-### 👆 Swipe to Delete
-Swipe a transaction left to reveal the delete action.
-
-- Less than or equal to 70% → snaps back
-- More than 70% → deletes
-- No confirmation popup
-- Snackbar provides Undo
-
-### ↩️ Undo & Redo
-Accidentally changed something?
-
-Pattubook supports undo and a single-level redo for recent transaction actions.
-
-### 🗑️ Recycle Bin
-Deleted people and transactions aren't immediately destroyed.
-
-Restore them later or permanently delete them from the Recycle Bin.
-
-### 🙈 Hide People
-Hide people from the main overview without deleting their financial history.
-
-### 🔐 App Lock
-Optional device authentication using Android's biometric/device credential system.
-
-Your financial information can stay behind the device's existing security.
-
-### 💾 Backup & Restore
-Create a complete local backup and restore it later.
-
-Backups preserve:
-
-- People
-- Transactions
-- Dates
-- Notes
-- Hidden state
-- Deleted state
-- Original IDs
-
-Restore operations are validated before modifying existing data.
-
----
-
-## 📱 Screenshots
-
-A quick look at Pattubook's focused, dark interface for tracking personal loans.
+## Screenshots
 
 <table>
   <tr>
-    <td align="center"><strong>Home</strong><br><img src="screenshots/home.jpg" alt="Pattubook home screen" width="260"></td>
-    <td align="center"><strong>Activity</strong><br><img src="screenshots/activity.jpg" alt="Pattubook activity timeline" width="260"></td>
-  </tr>
-  <tr>
-    <td align="center"><strong>Person Ledger</strong><br><img src="screenshots/person-ledger.jpg" alt="Pattubook person ledger" width="260"></td>
-    <td align="center"><strong>Give Money</strong><br><img src="screenshots/give-money.jpg" alt="Pattubook Give Money form" width="260"></td>
-  </tr>
-  <tr>
-    <td colspan="2" align="center"><strong>Settings</strong><br><img src="screenshots/settings.jpg" alt="Pattubook settings screen" width="260"></td>
+    <td align="center"><img src="screenshots/home.jpg" width="240" alt="PattuBook home overview with a balance card and people list"><br><strong>Home overview</strong></td>
+    <td align="center"><img src="screenshots/person-ledger.jpg" width="240" alt="Person ledger with totals and transaction history"><br><strong>Person ledger</strong></td>
+    <td align="center"><img src="screenshots/activity.jpg" width="240" alt="Activity timeline with loans and repayments"><br><strong>Activity timeline</strong></td>
   </tr>
 </table>
 
----
+<details>
+  <summary>See the entry form and settings</summary>
+  <br>
+  <table>
+    <tr>
+      <td align="center"><img src="screenshots/give-money.jpg" width="240" alt="Give Money form with amount keypad, date, and notes"><br><strong>Give Money</strong></td>
+      <td align="center"><img src="screenshots/settings.jpg" width="240" alt="Settings with app lock, backup, restore, and recycle bin controls"><br><strong>Settings</strong></td>
+    </tr>
+  </table>
+</details>
 
-## 🎨 Design
+## How the ledger works
 
-Pattubook uses a dark, minimal visual language focused on readability and hierarchy.
+```mermaid
+flowchart LR
+    Given["Money given"] --> Ledger["Person’s ledger"]
+    Returned["Money returned"] --> Ledger
+    Ledger --> Overview["Outstanding balance"]
+    Ledger --> Timeline["Activity timeline"]
+    Ledger --> Backup["JSON export"]
+```
 
-- Deep charcoal surfaces
-- Burgundy/maroon accents
-- Soft rounded cards
-- Large financial figures
-- Subtle gradients
-- Minimal iconography
-- Floating navigation
-- Instant screen transitions
+The ledger lives in a local Room database. To take a copy with you, use **Settings → Backup Data**. Restoring a JSON backup replaces the current ledger after confirmation. JSON exports contain ledger data and omit the profile photo files.
 
-The interface is intentionally designed to feel more like a focused personal finance tool than a generic Material demo.
+## Install on Android
 
----
+Download the APK under **Assets** on the [Releases page](https://github.com/sathwikcherott/pattubook/releases). PattuBook requires **Android 10 or newer**.
 
-## 🛠️ Built With
+If an older install uses a different signing key, Android will reject an in-place update. Export a fresh backup and verify that it restores on a spare device or emulator before removing the working installation.
 
-| Technology | Purpose |
-|---|---|
-| **Kotlin** | Application language |
-| **Jetpack Compose** | UI |
-| **Material 3** | UI foundation |
-| **Room** | Local database |
-| **Navigation Compose** | Screen navigation |
-| **AndroidX Biometric** | App Lock |
-| **SharedPreferences / DataStore** | Local preferences |
-| **Android Storage Access Framework** | Backup & restore |
+## Build from source
 
----
+For the schema 7 build with profile photo cropping, use [`codex/pattubook-data-safety`](https://github.com/sathwikcherott/pattubook/tree/codex/pattubook-data-safety). Open the project in Android Studio, install the **Android SDK 36.1** platform if prompted, and run the `app` configuration.
 
-## 🏗️ Architecture
+```bash
+git clone --branch codex/pattubook-data-safety https://github.com/sathwikcherott/pattubook.git
+cd pattubook
+./gradlew testDebugUnitTest assembleDebug
+```
 
-Pattubook follows a simple offline-first architecture:
+The debug APK is generated at `app/build/outputs/apk/debug/app-debug.apk`.
 
-```text
-┌─────────────────────┐
-│     Compose UI      │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│      ViewModel      │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│     Repository      │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│    Room Database    │
-└─────────────────────┘
+Found a bug? [Open an issue](https://github.com/sathwikcherott/pattubook/issues/new) with your app version, Android version, and steps to reproduce it.
